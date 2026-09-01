@@ -879,47 +879,16 @@ if st.sidebar.button(
 
 EXPLANATION_LANGUAGES = [
     "English",
-    "Hindi",
-    "Hinglish",
-    "Bengali",
-    "Marathi",
-    "Tamil",
-    "Telugu",
-    "Gujarati",
-    "Punjabi",
-    "French",
-    "Spanish"
+    "Hindi"
 ]
-
-
 SPEAKER_LANGUAGE_CODES = {
     "English": "en-US",
-    "Hindi": "hi-IN",
-    "Bengali": "bn-IN",
-    "Marathi": "mr-IN",
-    "Tamil": "ta-IN",
-    "Telugu": "te-IN",
-    "Gujarati": "gu-IN",
-    "Punjabi": "pa-IN",
-    "French": "fr-FR",
-    "Spanish": "es-ES"
+    "Hindi": "hi-IN"
 }
-
-
 TTS_LANGUAGE_CODES = {
     "English": "en",
-    "Hindi": "hi",
-    "Bengali": "bn",
-    "Marathi": "mr",
-    "Tamil": "ta",
-    "Telugu": "te",
-    "Gujarati": "gu",
-    "Punjabi": "pa",
-    "French": "fr",
-    "Spanish": "es"
+    "Hindi": "hi"
 }
-
-
 # ==========================================================
 # LANGUAGE INSTRUCTION
 # ==========================================================
@@ -4130,14 +4099,13 @@ with input_container:
     # ------------------------------------------------------
     # MICROPHONE
     # ------------------------------------------------------
+with input_col1:
 
-    with input_col1:
-
-        audio = st.audio_input(
-            "🎤",
-            key="my_voice_mic"
-        )
-
+    audio = st.audio_input(
+        "",
+        key="my_voice_mic",
+        label_visibility="collapsed"
+    )
     # ------------------------------------------------------
     # TEXT INPUT
     # ------------------------------------------------------
