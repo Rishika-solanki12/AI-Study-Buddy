@@ -4392,27 +4392,27 @@ IMPORTANT OUTPUT RULES:
                         raise RuntimeError(
                             "AI returned an empty answer."
                         )
-# ==================================================
-# DISPLAY ANSWER
-# ==================================================
+                # ==================================================
+                # DISPLAY ANSWER
+                # ==================================================
 
-st.markdown(answer)
+                st.markdown(answer)
 
-# ==================================================
-# SAVE MEMORY
-# ==================================================
+                # ==================================================
+                # SAVE MEMORY
+                # ==================================================
 
-try:
+                try:
 
-    extract_and_save_memories(
-        prompt,
-        answer
-    )
+                    extract_and_save_memories(
+                        prompt,
+                        answer
+                    )
 
-except Exception:
+                except Exception:
 
-    # Memory failure must NEVER break chat.
-    pass
+                    # Memory failure must NEVER break chat.
+                    pass
 
                 # ==================================================
                 # TEXT TO SPEECH
