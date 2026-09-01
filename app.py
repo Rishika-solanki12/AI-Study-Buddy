@@ -2001,97 +2001,87 @@ TEXT:
                         f"Translation failed: {error}"
                     )
 
-    # ======================================================
-    # IMAGE GENERATION
-    # ======================================================
+    ## ======================================================
+# IMAGE GENERATION
+# ======================================================
 
-    st.divider()
+st.divider()
 
-    st.subheader(
-        "🎨 Image Generation"
-    )
+st.subheader(
+    "🎨 Image Generation"
+)
 
-    image_prompt = st.text_area(
-        "Describe the image you want"
-    )
+image_prompt = st.text_area(
+    "Describe the image you want"
+)
 
-    if st.button(
-        "Generate Image",
-        use_container_width=True
-    ):
+if st.button(
+    "Generate Image",
+    use_container_width=True
+):
 
-        hf_token = ""
+    hf_token = ""
 
-        try:
+    try:
+        hf_token = st.secrets.get(
+            "HF_TOKEN",
+            ""
+        )
+    except Exception:
+        pass
 
-            hf_token = st.secrets.get(
-                "HF_TOKEN",
-                ""
-            )
+    if not hf_token:
+        hf_token = os.getenv(
+            "HF_TOKEN",
+            ""
+        )
 
-        except Exception:
+    if not hf_token:
 
-            pass
+        st.info(
+            "Image generation is optional. "
+            "Add HF_TOKEN to secrets to enable it."
+        )
 
-        if not hf_token:
+    elif not image_prompt.strip():
 
-            hf_token = os.getenv(
-                "HF_TOKEN",
-                ""
-            )
+        st.warning(
+            "Describe the image first."
+        )
 
-        if not hf_token:
+    else:
 
-            st.info(
-                "Image generation is optional. "
-                "Add HF_TOKEN to secrets to enable it."
-            )
+        with st.spinner(
+            "Generating image..."
+        ):
 
-        elif not image_prompt.strip():
+            try:
 
-            st.warning(
-                "Describe the image first."
-            )
+                from huggingface_hub import InferenceClient
 
-        else:
+                client = InferenceClient(
+                    provider="auto",
+                    api_key=hf_token
+                )
 
-            with st.spinner(
-                "Generating image..."
-            ):
+                generated = client.text_to_image(
+                    prompt=image_prompt,
+                    model="black-forest-labs/FLUX.1-schnell"
+                )
 
-                try:
+                st.session_state.generated_image = generated
 
-                    from huggingface_hub import (
-                        InferenceClient
-                    )
+                st.image(
+                    generated,
+                    caption="Generated Image",
+                    use_container_width=True
+                )
 
-                    client = InferenceClient(
-                        provider="hf-inference",
-                        token=hf_token
-                    )
+            except Exception as error:
 
-                    generated = (
-                        client.text_to_image(
-
-                            image_prompt,
-
-                            model=(
-                                "black-forest-labs/"
-                                "FLUX.1-schnell"
-                            )
-
-                        )
-                    )
-
-                    st.session_state.generated_image = (
-                        generated
-                    )
-
-                except Exception as error:
-
-                    st.error(
-                        f"Image generation failed: {error}"
-                    )
+                st.error(
+                    f"Image generation failed: {error}"
+                )
 
     # ======================================================
     # TEXT TO SPEECH
