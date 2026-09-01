@@ -6,8 +6,6 @@ python-pptx
 scikit-learn
 groq
 gTTS
-huggingface_hub
+huggingface_hub>=0.35.0
 openpyxl
 xlrd
-huggingface_hub
-huggingface_hub>=0.35.0
