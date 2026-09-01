@@ -25,6 +25,7 @@ from langchain_community.vectorstores import FAISS
 
 from gtts import gTTS
 from groq import Groq
+from huggingface_hub import InferenceClient
 
 
 # ==========================================================
@@ -113,9 +114,12 @@ DEFAULT_STATE = {
     "processed_files": [],
     "vector_store": None,
 
+    "generated_ai_image": None,
+    "generated_ai_image_prompt": None,
+
     "memory_user_id": None,
     "memory_loaded": False,
-
+    
     "document_explanation": None,
     "image_explanation": None,
 
@@ -1196,6 +1200,7 @@ def clean_text_for_speech(text):
     )
 
     return text.strip()
+    
 
 
 # ==========================================================
@@ -1208,6 +1213,195 @@ st.write(
     "Upload your study material and search concepts instantly!"
 )
 
+
+
+# ==========================================================
+# IMAGE GENERATION
+# ==========================================================
+
+st.sidebar.markdown("---")
+
+st.sidebar.header(
+    "🎨 Image Generation"
+)
+
+st.sidebar.caption(
+    "Create an educational image using AI"
+)
+
+image_generation_prompt = st.sidebar.text_area(
+    "📝 Describe the image you want:",
+    placeholder=(
+        "Example: Draw a simple labeled diagram "
+        "of the human heart for a school student."
+    ),
+    height=100,
+    key="image_generation_prompt"
+)
+
+generate_image_button = st.sidebar.button(
+    "🎨 Generate Image",
+    use_container_width=True,
+    key="generate_image_button"
+)
+
+
+def get_hf_token():
+
+    try:
+
+        token = st.secrets.get(
+            "HF_TOKEN",
+            ""
+        )
+
+    except Exception:
+
+        token = ""
+
+    if not token:
+
+        raise RuntimeError(
+            "HF_TOKEN is missing. "
+            "Please add HF_TOKEN to Streamlit Secrets."
+        )
+
+    return str(token).strip()
+
+
+def generate_ai_image(prompt):
+
+    token = get_hf_token()
+
+    client = InferenceClient(
+        provider="auto",
+        api_key=token,
+        timeout=120
+    )
+
+    image = client.text_to_image(
+        prompt=prompt,
+        model="black-forest-labs/FLUX.1-schnell"
+    )
+
+    return image
+
+
+if generate_image_button:
+
+    if not image_generation_prompt.strip():
+
+        st.sidebar.warning(
+            "⚠️ Please enter an image description first."
+        )
+
+    else:
+
+        with st.spinner(
+            "🎨 AI is generating your image..."
+        ):
+
+            try:
+
+                generated_image = generate_ai_image(
+                    image_generation_prompt.strip()
+                )
+
+                st.session_state.generated_ai_image = (
+                    generated_image
+                )
+
+                st.session_state.generated_ai_image_prompt = (
+                    image_generation_prompt.strip()
+                )
+
+                st.success(
+                    "✅ Image generated successfully!"
+                )
+
+            except Exception as e:
+
+                error_text = str(e)
+
+                if (
+                    "credit" in error_text.lower()
+                    or
+                    "billing" in error_text.lower()
+                    or
+                    "payment" in error_text.lower()
+                ):
+
+                    st.sidebar.error(
+                        "❌ Hugging Face free inference "
+                        "credits are unavailable/exhausted."
+                    )
+
+                else:
+
+                    st.sidebar.error(
+                        f"❌ Image generation failed: {e}"
+                    )
+
+
+# ==========================================================
+# DISPLAY GENERATED IMAGE
+# ==========================================================
+
+if st.session_state.get(
+    "generated_ai_image"
+) is not None:
+
+    st.sidebar.markdown("---")
+
+    st.sidebar.subheader(
+        "🖼️ Generated Image"
+    )
+
+    st.sidebar.image(
+        st.session_state.generated_ai_image,
+        use_container_width=True
+    )
+
+    image_bytes = None
+
+    try:
+
+        from io import BytesIO
+
+        image_buffer = BytesIO()
+
+        st.session_state.generated_ai_image.save(
+            image_buffer,
+            format="PNG"
+        )
+
+        image_bytes = image_buffer.getvalue()
+
+    except Exception:
+        image_bytes = None
+
+
+    if image_bytes:
+
+        st.sidebar.download_button(
+            label="⬇️ Download Image",
+            data=image_bytes,
+            file_name="AI_Study_Buddy_Generated_Image.png",
+            mime="image/png",
+            use_container_width=True,
+            key="download_generated_ai_image"
+        )
+
+
+# ==========================================================
+# SIDEBAR UPLOAD
+# ==========================================================
+
+st.sidebar.markdown("---")
+
+st.sidebar.header(
+    "📁 Upload Study Material"
+)
 
 # ==========================================================
 # SIDEBAR UPLOAD
