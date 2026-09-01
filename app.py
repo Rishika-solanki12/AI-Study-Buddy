@@ -3991,15 +3991,13 @@ if prompt:
         )
 
 
-    # ------------------------------------------------------
+    #    # ------------------------------------------------------
     # AI RESPONSE
     # ------------------------------------------------------
 
     with st.chat_message("assistant"):
 
-        with st.spinner(
-            "Thinking..."
-        ):
+        with st.spinner("Thinking..."):
 
             answer = None
 
@@ -4013,7 +4011,6 @@ if prompt:
                     prompt,
                     max_memories=8
                 )
-
 
                 # ==================================================
                 # DOCUMENT CHAT
@@ -4083,7 +4080,6 @@ ANSWER:
                         custom_prompt
                     )
 
-
                 # ==================================================
                 # GENERAL CHAT
                 # ==================================================
@@ -4133,7 +4129,6 @@ MEMORY RULES:
                         response
                     )
 
-
                 # ==================================================
                 # FINAL ANSWER CLEANUP
                 # ==================================================
@@ -4152,7 +4147,6 @@ MEMORY RULES:
                         "AI returned an empty answer."
                     )
 
-
                 # ==================================================
                 # SAVE MEMORY
                 # ==================================================
@@ -4162,7 +4156,6 @@ MEMORY RULES:
                     answer
                 )
 
-
                 # ==================================================
                 # DISPLAY ANSWER
                 # ==================================================
@@ -4170,7 +4163,6 @@ MEMORY RULES:
                 st.markdown(
                     answer
                 )
-
 
                 # ==================================================
                 # TEXT TO SPEECH
@@ -4205,7 +4197,6 @@ MEMORY RULES:
                     # TTS failure must NOT break chat.
                     pass
 
-
                 # ==================================================
                 # SAVE AI MESSAGE
                 # ==================================================
@@ -4215,20 +4206,22 @@ MEMORY RULES:
                     "content": answer
                 })
 
+            # ==================================================
+            # MAIN CHAT ERROR
+            # ==================================================
 
-# ==================================================
-# MAIN CHAT ERROR
-# ==================================================
+            except Exception as e:
 
-except Exception as e:
-    error_message = (
-        "❌ AI Chat Error\n\n"
-        f"{str(e)}"
-    )
+                error_message = (
+                    "❌ AI Chat Error\n\n"
+                    f"{str(e)}"
+                )
 
-    st.error(error_message)
+                st.error(
+                    error_message
+                )
 
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": error_message
-    })
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": error_message
+                })
