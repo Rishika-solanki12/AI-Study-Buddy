@@ -9,3 +9,4 @@ gTTS
 huggingface_hub
 openpyxl
 xlrd
+huggingface_hub
