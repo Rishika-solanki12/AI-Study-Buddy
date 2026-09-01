@@ -4354,16 +4354,21 @@ if len(
     )
 
 
+## ==========================================================
+# INITIALIZE CHAT HISTORY
+# ==========================================================
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+
 # ==========================================================
 # STUDY ANALYTICS
 # ==========================================================
 
 st.sidebar.markdown("---")
 
-st.sidebar.subheader(
-    "📊 My Progress"
-)
-
+st.sidebar.subheader("📊 My Progress")
 
 total_questions = sum(
     1
@@ -4371,63 +4376,45 @@ total_questions = sum(
     if msg["role"] == "user"
 )
 
-
 total_docs = len(
     st.session_state.processed_files
 )
 
-
 words_learned = sum(
-    len(
-        msg["content"].split()
-    )
+    len(msg["content"].split())
     for msg in st.session_state.messages
     if msg["role"] == "assistant"
 )
 
-
 col1, col2 = st.sidebar.columns(2)
 
-
 with col1:
-
     st.metric(
         label="Questions",
         value=total_questions
     )
 
-
 with col2:
-
     st.metric(
         label="Docs",
         value=total_docs
     )
-
 
 st.sidebar.metric(
     label="Words Learned (approx)",
     value=words_learned
 )
 
-
 if total_questions > 0:
 
-    st.sidebar.write(
-        "Study Streak 🔥"
-    )
-
+    st.sidebar.write("Study Streak 🔥")
 
     progress_val = min(
         total_questions * 10,
         100
     )
 
-
-    st.sidebar.progress(
-        progress_val
-    )
-
+    st.sidebar.progress(progress_val)
 
 else:
 
@@ -4437,36 +4424,13 @@ else:
     )
 
 
-st.session_state.messages.append({
-    "role": "assistant",
-    "content": error_message
-})
 # ==========================================================
 # MAIN CHAT
 # ==========================================================
 
 st.sidebar.markdown("---")
 
-st.subheader(
-    "💬 Chat with your Study Buddy"
-)
-
-
-# ==========================================================
-# INITIALIZE CHAT HISTORY
-# ==========================================================
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-
-# ==========================================================
-# INITIALIZE AUDIO TRACKING
-# ==========================================================
-
-if "last_audio_id" not in st.session_state:
-    st.session_state.last_audio_id = None
-
+st.subheader("💬 Chat with your Study Buddy")
 
 # ==========================================================
 # DISPLAY CHAT HISTORY
