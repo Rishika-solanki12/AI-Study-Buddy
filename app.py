@@ -3957,18 +3957,11 @@ prompt = (
 
 if prompt:
 
-    prompt = str(
-        prompt
-    ).strip()
+    prompt = str(prompt).strip()
 
     if not prompt:
-
-        st.warning(
-            "Please enter a question."
-        )
-
+        st.warning("Please enter a question.")
         st.stop()
-
 
     # ------------------------------------------------------
     # SAVE USER MESSAGE
@@ -3979,19 +3972,14 @@ if prompt:
         "content": prompt
     })
 
-
     # ------------------------------------------------------
     # DISPLAY USER MESSAGE
     # ------------------------------------------------------
 
     with st.chat_message("user"):
+        st.markdown(prompt)
 
-        st.markdown(
-            prompt
-        )
-
-
-    #    # ------------------------------------------------------
+    # ------------------------------------------------------
     # AI RESPONSE
     # ------------------------------------------------------
 
@@ -3999,38 +3987,50 @@ if prompt:
 
         with st.spinner("Thinking..."):
 
-            answer = None
-
             try:
+
+                answer = ""
 
                 # ==================================================
                 # MEMORY
                 # ==================================================
 
-                memory_context = get_memory_context(
-                    prompt,
-                    max_memories=8
-                )
+                try:
+                    memory_context = get_memory_context(
+                        prompt,
+                        max_memories=8
+                    )
+                except Exception:
+                    memory_context = (
+                        "No long-term memory is available "
+                        "for this user."
+                    )
 
                 # ==================================================
                 # DOCUMENT CHAT
                 # ==================================================
 
-                if (
-                    st.session_state.vector_store
-                    is not None
-                ):
+                if st.session_state.vector_store is not None:
 
-                    docs = (
-                        st.session_state.vector_store
-                        .similarity_search(
-                            prompt,
-                            k=3
+                    try:
+
+                        docs = (
+                            st.session_state.vector_store
+                            .similarity_search(
+                                prompt,
+                                k=3
+                            )
                         )
-                    )
+
+                    except Exception as retrieval_error:
+
+                        raise RuntimeError(
+                            f"Document search failed: "
+                            f"{retrieval_error}"
+                        )
 
                     context = "\n\n".join(
-                        doc.page_content
+                        str(doc.page_content)
                         for doc in docs
                     )
 
@@ -4062,11 +4062,11 @@ USER QUESTION:
 
 INSTRUCTIONS:
 
-1. Use uploaded study material as primary source.
-2. You may add useful general knowledge.
+1. Use uploaded study material as the primary source.
+2. You may add useful general knowledge when appropriate.
 3. Give clear and accurate answers.
-4. If interview questions are requested,
-   provide basic, intermediate and advanced questions.
+4. If interview questions are requested, provide basic,
+   intermediate and advanced questions.
 5. Give examples when useful.
 6. Explain like an expert teacher.
 7. Reply in exactly the same language used by the user.
@@ -4092,10 +4092,10 @@ You are a highly intelligent AI Study Buddy.
 Reply in exactly the same language
 used by the user.
 
-If user writes Hindi,
+If the user writes Hindi,
 reply in Hindi.
 
-If user writes English,
+If the user writes English,
 reply in English.
 
 Explain clearly like an expert teacher.
@@ -4111,7 +4111,7 @@ MEMORY RULES:
 3. Never mention the memory system.
 4. Never reveal internal memory unnecessarily.
 5. Never invent information.
-6. Current user message always has priority.
+6. The current user message always has priority.
 """
 
                     response = get_llm().invoke(
@@ -4148,21 +4148,26 @@ MEMORY RULES:
                     )
 
                 # ==================================================
-                # SAVE MEMORY
-                # ==================================================
-
-                extract_and_save_memories(
-                    prompt,
-                    answer
-                )
-
-                # ==================================================
                 # DISPLAY ANSWER
                 # ==================================================
 
-                st.markdown(
-                    answer
-                )
+                st.markdown(answer)
+
+                # ==================================================
+                # SAVE MEMORY
+                # ==================================================
+
+                try:
+
+                    extract_and_save_memories(
+                        prompt,
+                        answer
+                    )
+
+                except Exception:
+
+                    # Memory failure must NEVER break chat.
+                    pass
 
                 # ==================================================
                 # TEXT TO SPEECH
@@ -4194,7 +4199,7 @@ MEMORY RULES:
 
                 except Exception:
 
-                    # TTS failure must NOT break chat.
+                    # TTS failure must NEVER break chat.
                     pass
 
                 # ==================================================
@@ -4212,16 +4217,18 @@ MEMORY RULES:
 
             except Exception as e:
 
-                error_message = (
+                # IMPORTANT:
+                # Do NOT use a separate error_message variable.
+                # This completely prevents the NameError.
+
+                error_text = (
                     "❌ AI Chat Error\n\n"
-                    f"{str(e)}"
+                    + str(e)
                 )
 
-                st.error(
-                    error_message
-                )
+                st.error(error_text)
 
                 st.session_state.messages.append({
                     "role": "assistant",
-                    "content": error_message
+                    "content": error_text
                 })
