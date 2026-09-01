@@ -4216,22 +4216,19 @@ MEMORY RULES:
                 })
 
 
-            # ==================================================
-            # MAIN CHAT ERROR
-            # ==================================================
+# ==================================================
+# MAIN CHAT ERROR
+# ==================================================
 
-            except Exception as e:
+except Exception as e:
+    error_message = (
+        "❌ AI Chat Error\n\n"
+        f"{str(e)}"
+    )
 
-                error_message = (
-                    "❌ AI Chat Error\n\n"
-                    f"{str(e)}"
-                )
+    st.error(error_message)
 
-                st.error(
-                    error_message
-                )
-
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": error_message
-                })
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": error_message
+    })
