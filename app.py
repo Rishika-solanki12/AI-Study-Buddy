@@ -15,6 +15,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from groq import Groq
 from gtts import gTTS
+from huggingface_hub import InferenceClient
 
 
 # ==========================================================
