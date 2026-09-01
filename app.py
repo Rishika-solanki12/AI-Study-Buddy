@@ -4038,24 +4038,128 @@ for message in st.session_state.messages:
 
 
 # ==========================================================
-# VOICE INPUT
+# COMBINED MOBILE-FRIENDLY INPUT
 # ==========================================================
 
-st.write(
-    "🎤 **Tap the microphone and ask your question:**"
+st.markdown(
+    """
+    <style>
+
+    /* Main combined input area */
+    .combined-input-wrapper {
+        width: 100%;
+        border: 1px solid #d1d5db;
+        border-radius: 16px;
+        padding: 8px;
+        background: #ffffff;
+        box-shadow: 0px 2px 8px rgba(0,0,0,0.08);
+        margin-top: 8px;
+        margin-bottom: 15px;
+    }
+
+    /* Audio input styling */
+    div[data-testid="stAudioInput"] {
+        margin-bottom: 0 !important;
+    }
+
+    div[data-testid="stAudioInput"] > div {
+        border-radius: 12px !important;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+
+        .combined-input-wrapper {
+            border-radius: 14px;
+            padding: 6px;
+        }
+
+        div[data-testid="stAudioInput"] button {
+            min-height: 45px !important;
+        }
+
+        div[data-testid="stChatInput"] {
+            margin-bottom: 5px !important;
+        }
+
+    }
+
+    /* Very small phones */
+    @media (max-width: 480px) {
+
+        .combined-input-wrapper {
+            padding: 5px;
+            border-radius: 12px;
+        }
+
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
-audio = st.audio_input(
-    "Start Recording",
-    key="my_voice_mic"
+
+st.write(
+    "🎤 **Ask your Study Buddy by voice or text:**"
 )
+
+
+# ==========================================================
+# COMBINED INPUT CONTAINER
+# ==========================================================
+
+input_container = st.container()
+
+with input_container:
+
+    st.markdown(
+        '<div class="combined-input-wrapper">',
+        unsafe_allow_html=True
+    )
+
+    # ------------------------------------------------------
+    # INPUT COLUMNS
+    # ------------------------------------------------------
+
+    input_col1, input_col2 = st.columns(
+        [1.2, 8.8],
+        gap="small"
+    )
+
+    # ------------------------------------------------------
+    # MICROPHONE
+    # ------------------------------------------------------
+
+    with input_col1:
+
+        audio = st.audio_input(
+            "🎤",
+            key="my_voice_mic"
+        )
+
+    # ------------------------------------------------------
+    # TEXT INPUT
+    # ------------------------------------------------------
+
+    with input_col2:
+
+        text_input = st.chat_input(
+            "Ask your question..."
+        )
+
+    st.markdown(
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+
+# ==========================================================
+# VOICE INPUT PROCESSING
+# ==========================================================
 
 voice_input = None
 
-
-# ==========================================================
-# PROCESS VOICE
-# ==========================================================
 
 if audio is not None:
 
@@ -4126,15 +4230,6 @@ if audio is not None:
 
 
 # ==========================================================
-# TEXT INPUT
-# ==========================================================
-
-text_input = st.chat_input(
-    "Ask a question about your document or anything else..."
-)
-
-
-# ==========================================================
 # FINAL PROMPT
 # ==========================================================
 
@@ -4142,10 +4237,7 @@ prompt = (
     text_input
     if text_input
     else voice_input
-)
-
-
-# ==========================================================
+)# ==========================================================
 # MAIN CHAT PROCESSING
 # ==========================================================
 
