@@ -4378,14 +4378,15 @@ IMPORTANT OUTPUT RULES:
 
                     answer = response_to_text(
                         response
-                    )# ==================================================
+                    )
+# ==================================================
 # FINAL ANSWER CLEANUP
 # ==================================================
 
-answer = response_to_text(response)
+                    answer = response_to_text(response)
 
-answer = remove_thinking(answer)
-answer = str(answer).strip()
+                    answer = remove_thinking(answer)
+                    answer = str(answer).strip()
 
 if not answer:
     raise RuntimeError(
