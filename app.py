@@ -4859,7 +4859,3 @@ MEMORY RULES:
                 # This is INSIDE except.
                 # Therefore error_message always exists here.
 
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": error_message
-                })
