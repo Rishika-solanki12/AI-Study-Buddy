@@ -4388,11 +4388,10 @@ IMPORTANT OUTPUT RULES:
                     answer = remove_thinking(answer)
                     answer = str(answer).strip()
 
-if not answer:
-    raise RuntimeError(
-        "AI returned an empty answer."
-    )
-
+                    if not answer:
+                        raise RuntimeError(
+                            "AI returned an empty answer."
+                        )
 # ==================================================
 # DISPLAY ANSWER
 # ==================================================
