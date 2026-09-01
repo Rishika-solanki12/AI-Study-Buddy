@@ -3,4 +3,4 @@ data/uploaded_pdfs/
 chat_reply.mp3
 __pycache__/
 *.pyc
-.env
+.envgit 

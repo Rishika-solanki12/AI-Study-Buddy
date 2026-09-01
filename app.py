@@ -4,6 +4,8 @@ import json
 import base64
 import shutil
 import subprocess
+import sqlite3
+import uuid
 from datetime import datetime
 
 import streamlit as st
@@ -23,9 +25,6 @@ from langchain_community.vectorstores import FAISS
 
 from gtts import gTTS
 from groq import Groq
-import sqlite3
-import uuid
-
 
 
 # ==========================================================
@@ -114,12 +113,8 @@ DEFAULT_STATE = {
     "processed_files": [],
     "vector_store": None,
 
-    # ======================================================
-    # LONG-TERM MEMORY
-    # ======================================================
     "memory_user_id": None,
     "memory_loaded": False,
-
 
     "document_explanation": None,
     "image_explanation": None,
@@ -143,13 +138,195 @@ DEFAULT_STATE = {
 
     "analyzed_image_name": None,
     "image_sentence_count": 3,
+
+    "last_audio_id": None,
 }
 
 for key, value in DEFAULT_STATE.items():
 
     if key not in st.session_state:
         st.session_state[key] = value
-        # ==========================================================
+
+
+# ==========================================================
+# API KEY CHECK
+# ==========================================================
+
+def get_groq_api_key():
+
+    try:
+
+        api_key = st.secrets.get(
+            "GROQ_API_KEY",
+            ""
+        )
+
+    except Exception:
+
+        api_key = ""
+
+    if not api_key:
+
+        raise RuntimeError(
+            "GROQ_API_KEY is missing. "
+            "Please add GROQ_API_KEY to Streamlit Secrets."
+        )
+
+    return str(api_key).strip()
+
+
+# ==========================================================
+# MODEL NAMES
+# ==========================================================
+
+TEXT_MODEL = "openai/gpt-oss-20b"
+
+VISION_MODEL = "qwen/qwen3.6-27b"
+
+
+# ==========================================================
+# SAFE MODEL CREATION
+# ==========================================================
+
+@st.cache_resource
+def get_llm():
+
+    return ChatGroq(
+        api_key=get_groq_api_key(),
+        model=TEXT_MODEL,
+        temperature=0
+    )
+
+
+def get_vision_llm():
+
+    return ChatGroq(
+        api_key=get_groq_api_key(),
+        model=VISION_MODEL,
+        temperature=0
+    )
+
+
+# ==========================================================
+# SAFE RESPONSE TEXT EXTRACTION
+# ==========================================================
+
+def response_to_text(response):
+
+    if response is None:
+        return ""
+
+    content = getattr(
+        response,
+        "content",
+        response
+    )
+
+    if isinstance(content, str):
+
+        return content
+
+    if isinstance(content, list):
+
+        parts = []
+
+        for item in content:
+
+            if isinstance(item, dict):
+
+                if "text" in item:
+
+                    parts.append(
+                        str(item["text"])
+                    )
+
+                elif "content" in item:
+
+                    parts.append(
+                        str(item["content"])
+                    )
+
+            else:
+
+                parts.append(
+                    str(item)
+                )
+
+        return " ".join(parts)
+
+    return str(content)
+
+
+# ==========================================================
+# CLEAN MODEL THINKING
+# ==========================================================
+
+def remove_thinking(text):
+
+    if not text:
+        return ""
+
+    text = str(text)
+
+    text = re.sub(
+        r"<think>.*?</think>",
+        "",
+        text,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+    text = re.sub(
+        r"<analysis>.*?</analysis>",
+        "",
+        text,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+    return text.strip()
+
+
+# ==========================================================
+# SAFE LLM CALL
+# ==========================================================
+
+def ask_llm(prompt):
+
+    try:
+
+        model = get_llm()
+
+        response = model.invoke(
+            [
+                HumanMessage(
+                    content=str(prompt)
+                )
+            ]
+        )
+
+        answer = response_to_text(
+            response
+        )
+
+        answer = remove_thinking(
+            answer
+        )
+
+        if not answer.strip():
+
+            raise RuntimeError(
+                "Groq returned an empty response."
+            )
+
+        return answer.strip()
+
+    except Exception as e:
+
+        raise RuntimeError(
+            f"Groq AI request failed: {e}"
+        )
+
+
+# ==========================================================
 # LONG-TERM MEMORY SYSTEM
 # ==========================================================
 
@@ -192,7 +369,6 @@ def init_memory_database():
     )
 
     connection.commit()
-
     connection.close()
 
 
@@ -201,9 +377,6 @@ init_memory_database()
 
 # ==========================================================
 # GET / CREATE USER ID
-#
-# The ID is kept in the browser URL so that Streamlit
-# reruns do not create a new memory identity.
 # ==========================================================
 
 def get_memory_user_id():
@@ -218,7 +391,6 @@ def get_memory_user_id():
 
         existing_id = None
 
-
     if existing_id:
 
         st.session_state.memory_user_id = (
@@ -226,7 +398,6 @@ def get_memory_user_id():
         )
 
         return existing_id
-
 
     if not st.session_state.get(
         "memory_user_id"
@@ -249,7 +420,6 @@ def get_memory_user_id():
         except Exception:
 
             pass
-
 
     return st.session_state.memory_user_id
 
@@ -277,7 +447,6 @@ def save_memory(
     if not memory_text:
         return
 
-
     connection = sqlite3.connect(
         MEMORY_DB,
         check_same_thread=False
@@ -286,7 +455,6 @@ def save_memory(
     cursor = connection.cursor()
 
     now = datetime.now().isoformat()
-
 
     try:
 
@@ -391,15 +559,11 @@ def delete_all_memories():
     )
 
     connection.commit()
-
     connection.close()
 
 
 # ==========================================================
 # MEMORY SEARCH
-#
-# We do lightweight keyword matching so every question
-# does NOT require another embedding/vector database.
 # ==========================================================
 
 def search_memories(
@@ -412,7 +576,6 @@ def search_memories(
     if not memories:
         return []
 
-
     query_words = set(
         re.findall(
             r"\b[a-zA-Z0-9\u0900-\u097F]{3,}\b",
@@ -420,9 +583,7 @@ def search_memories(
         )
     )
 
-
     scored_memories = []
-
 
     for memory, category, importance in memories:
 
@@ -433,20 +594,17 @@ def search_memories(
             )
         )
 
-
         overlap = len(
             query_words.intersection(
                 memory_words
             )
         )
 
-
         score = (
             overlap * 10
             +
             int(importance)
         )
-
 
         scored_memories.append(
             (
@@ -456,45 +614,19 @@ def search_memories(
             )
         )
 
-
     scored_memories.sort(
         key=lambda x: x[0],
         reverse=True
     )
 
-
-    # Always include highly important memories.
-    important_memories = [
-        item
-        for item in scored_memories
-        if item[0] >= 5
-    ]
-
-
     selected = []
 
-
-    for item in important_memories:
+    for item in scored_memories:
 
         if len(selected) >= max_memories:
             break
 
         selected.append(item)
-
-
-    # If there are not enough matching memories,
-    # include recent/high-importance memories.
-    if len(selected) < max_memories:
-
-        for item in scored_memories:
-
-            if item not in selected:
-
-                selected.append(item)
-
-            if len(selected) >= max_memories:
-                break
-
 
     return [
         {
@@ -506,7 +638,7 @@ def search_memories(
 
 
 # ==========================================================
-# FORMAT MEMORY FOR THE MODEL
+# FORMAT MEMORY
 # ==========================================================
 
 def get_memory_context(
@@ -519,14 +651,12 @@ def get_memory_context(
         max_memories=max_memories
     )
 
-
     if not memories:
 
         return (
             "No long-term memory is available "
             "for this user."
         )
-
 
     lines = []
 
@@ -536,17 +666,11 @@ def get_memory_context(
             f"- {item['memory']}"
         )
 
-
-    return "\n".join(
-        lines
-    )
+    return "\n".join(lines)
 
 
 # ==========================================================
-# EXTRACT IMPORTANT USER MEMORIES
-#
-# The model decides what is worth remembering.
-# It does NOT store every single message.
+# EXTRACT MEMORIES
 # ==========================================================
 
 def extract_and_save_memories(
@@ -557,15 +681,13 @@ def extract_and_save_memories(
     if not user_message:
         return
 
-
     try:
 
         memory_prompt = f"""
 You are a long-term memory manager for an AI Study Buddy.
 
-Your job is to identify ONLY useful, non-sensitive,
-long-term information about the user that would help
-the assistant provide better responses in future chats.
+Identify ONLY useful, non-sensitive, long-term information
+about the user that could improve future conversations.
 
 USER MESSAGE:
 
@@ -575,18 +697,18 @@ ASSISTANT RESPONSE:
 
 {assistant_message}
 
-SAVE information such as:
+Save information such as:
 
-- User's preferred name
+- Preferred name
 - Learning goals
-- Subjects they are studying
-- Programming languages they are learning
+- Subjects
+- Programming languages
 - Long-term projects
 - Stable preferences
-- Preferred explanation style
+- Explanation style
 - Preferred language
 - Repeated study interests
-- Useful non-sensitive background information
+- Useful non-sensitive background
 
 DO NOT save:
 
@@ -597,14 +719,10 @@ DO NOT save:
 - Bank information
 - Exact addresses
 - Private secrets
-- Highly sensitive personal information
-- Temporary information that is not useful later
-- The complete conversation
-- The assistant's response as a memory
-
-IMPORTANT:
-
-Only return memories that are genuinely useful later.
+- Highly sensitive information
+- Temporary information
+- Complete conversations
+- Assistant response
 
 Return ONLY valid JSON.
 
@@ -619,97 +737,36 @@ Format:
 ]
 
 Importance:
+1-3 low
+4-6 useful
+7-8 important
+9-10 very important
 
-1-3 = low
-4-6 = useful
-7-8 = important
-9-10 = very important
-
-If there is nothing useful to remember, return:
+If nothing useful exists:
 
 []
-
-Do not write anything outside JSON.
 """
 
-
-        memory_llm = ChatGroq(
-            api_key=st.secrets[
-                "GROQ_API_KEY"
-            ],
-            model_name="openai/gpt-oss-20b",
-            temperature=0
+        raw_memory = ask_llm(
+            memory_prompt
         )
 
-
-        response = memory_llm.invoke(
-            [
-                HumanMessage(
-                    content=memory_prompt
-                )
-            ]
+        raw_memory = clean_json_response(
+            raw_memory
         )
 
-
-        raw_memory = getattr(
-            response,
-            "content",
-            ""
-        )
-
-
-        raw_memory = remove_thinking(
-            str(raw_memory)
-        ).strip()
-
-
-        raw_memory = re.sub(
-            r"```json",
-            "",
-            raw_memory,
-            flags=re.IGNORECASE
-        )
-
-
-        raw_memory = raw_memory.replace(
-            "```",
-            ""
-        ).strip()
-
-
-        start = raw_memory.find("[")
-
-        end = raw_memory.rfind("]")
-
-
-        if (
-            start == -1
-            or
-            end == -1
-            or
-            end <= start
-        ):
-
+        if not raw_memory:
             return
-
-
-        raw_memory = raw_memory[
-            start:end + 1
-        ]
-
 
         memories = json.loads(
             raw_memory
         )
 
-
         if not isinstance(
             memories,
             list
         ):
-
             return
-
 
         for item in memories:
 
@@ -717,9 +774,7 @@ Do not write anything outside JSON.
                 item,
                 dict
             ):
-
                 continue
-
 
             memory_text = str(
                 item.get(
@@ -728,14 +783,12 @@ Do not write anything outside JSON.
                 )
             ).strip()
 
-
             category = str(
                 item.get(
                     "category",
                     "general"
                 )
             ).strip()
-
 
             try:
 
@@ -750,7 +803,6 @@ Do not write anything outside JSON.
 
                 importance = 5
 
-
             importance = max(
                 1,
                 min(
@@ -758,7 +810,6 @@ Do not write anything outside JSON.
                     10
                 )
             )
-
 
             if (
                 memory_text
@@ -772,10 +823,9 @@ Do not write anything outside JSON.
                     importance
                 )
 
-
     except Exception:
 
-        # Memory must NEVER break the main chatbot.
+        # Memory must NEVER break chat.
         pass
 
 
@@ -789,9 +839,7 @@ st.sidebar.subheader(
     "🧠 Long-Term Memory"
 )
 
-
 current_memories = load_all_memories()
-
 
 if current_memories:
 
@@ -819,7 +867,6 @@ if st.sidebar.button(
     )
 
     st.rerun()
-
 
 
 # ==========================================================
@@ -870,30 +917,91 @@ TTS_LANGUAGE_CODES = {
 
 
 # ==========================================================
-# HELPERS
+# LANGUAGE INSTRUCTION
 # ==========================================================
 
-@st.cache_resource
-def get_llm():
+def get_language_instruction(language):
 
-    return ChatGroq(
-        api_key=st.secrets["GROQ_API_KEY"],
-        model_name="openai/gpt-oss-20b",
+    if language == "English":
+
+        return """
+Write the complete answer in natural English.
+Use English alphabet only.
+Do not mix Hindi or other languages.
+"""
+
+    elif language == "Hindi":
+
+        return """
+Write the COMPLETE answer in pure Hindi.
+
+IMPORTANT:
+- Use Devanagari script.
+- Use Hindi words wherever possible.
+- Do NOT write Hindi using Roman letters.
+- Do NOT use Hinglish.
+- Do NOT mix English sentences.
+- Technical terms may remain in English only when necessary.
+"""
+
+    elif language == "Hinglish":
+
+        return """
+Write the complete answer in natural Hinglish.
+Use a comfortable mixture of Hindi and English.
+Hindi may be written in Roman script.
+"""
+
+    return f"""
+Write the complete answer in {language}.
+Use the correct natural writing system.
+Do not mix languages unnecessarily.
+Return ONLY the requested language.
+"""
+
+
+# ==========================================================
+# TRANSLATION
+# ==========================================================
+
+def translate_for_speech(
+    text,
+    target_language
+):
+
+    if not text:
+        return ""
+
+    prompt = f"""
+You are a professional translator.
+
+Translate the following educational explanation
+into {target_language}.
+
+{get_language_instruction(target_language)}
+
+Rules:
+
+1. Translate only the explanation.
+2. Do not add greetings.
+3. Do not add introduction.
+4. Do not mention AI.
+5. Preserve meaning.
+6. Do not add information.
+7. Return only translated text.
+
+SOURCE:
+
+{remove_thinking(text)}
+"""
+
+    translator = ChatGroq(
+        api_key=get_groq_api_key(),
+        model=VISION_MODEL,
         temperature=0
     )
 
-
-llm = get_llm()
-
-
-groq_client = Groq(
-    api_key=st.secrets["GROQ_API_KEY"]
-)
-
-
-def ask_llm(prompt):
-
-    response = llm.invoke(
+    response = translator.invoke(
         [
             HumanMessage(
                 content=prompt
@@ -901,35 +1009,17 @@ def ask_llm(prompt):
         ]
     )
 
-    return response.content
-
-
-# ==========================================================
-# CLEAN MODEL THINKING
-# ==========================================================
-
-def remove_thinking(text):
-
-    if not text:
-        return ""
-
-    text = str(text)
-
-    text = re.sub(
-        r"<think>.*?</think>",
-        "",
-        text,
-        flags=re.DOTALL | re.IGNORECASE
+    translated = response_to_text(
+        response
     )
 
-    text = re.sub(
-        r"<analysis>.*?</analysis>",
-        "",
-        text,
-        flags=re.DOTALL | re.IGNORECASE
+    translated = remove_thinking(
+        translated
     )
 
-    return text.strip()
+    return clean_text_for_speech(
+        translated
+    )
 
 
 # ==========================================================
@@ -941,7 +1031,9 @@ def clean_json_response(text):
     if not text:
         return ""
 
-    text = remove_thinking(text)
+    text = remove_thinking(
+        text
+    )
 
     text = str(text).strip()
 
@@ -960,11 +1052,13 @@ def clean_json_response(text):
     first = text.find("[")
 
     if first != -1:
+
         text = text[first:]
 
     last = text.rfind("]")
 
     if last != -1:
+
         text = text[:last + 1]
 
     return text.strip()
@@ -1013,24 +1107,22 @@ def clean_text_for_speech(text):
         text
     )
 
-    bullet_symbols = [
+    symbols = [
         "•", "●", "○", "▪", "▫", "◦",
         "►", "▸", "▹", "◆", "◇",
         "✓", "✔", "☑", "☛",
-        "➜", "➤"
-    ]
-
-    for symbol in bullet_symbols:
-        text = text.replace(symbol, " ")
-
-    arrow_symbols = [
+        "➜", "➤",
         "→", "⇒", "⟶", "⟹",
         "←", "↔", "↕", "↑",
-        "↓", "➝", "➞", "➜", "➡"
+        "↓", "➝", "➞", "➡"
     ]
 
-    for symbol in arrow_symbols:
-        text = text.replace(symbol, " ")
+    for symbol in symbols:
+
+        text = text.replace(
+            symbol,
+            " "
+        )
 
     text = text.replace("<", " ")
     text = text.replace(">", " ")
@@ -1047,7 +1139,11 @@ def clean_text_for_speech(text):
     ]
 
     for symbol in unwanted_symbols:
-        text = text.replace(symbol, " ")
+
+        text = text.replace(
+            symbol,
+            " "
+        )
 
     emoji_pattern = re.compile(
         "["
@@ -1103,140 +1199,6 @@ def clean_text_for_speech(text):
 
 
 # ==========================================================
-# LANGUAGE-SPECIFIC INSTRUCTIONS
-# ==========================================================
-
-def get_language_instruction(language):
-
-    if language == "English":
-
-        return """
-Write the complete answer in natural English.
-Use English alphabet only.
-Do not mix Hindi or other languages.
-"""
-
-    elif language == "Hindi":
-
-        return """
-Write the COMPLETE answer in pure Hindi.
-
-VERY IMPORTANT:
-- Use Devanagari script.
-- Use Hindi words wherever possible.
-- Do NOT write Hindi using English/Roman letters.
-- Do NOT use Hinglish.
-- Do NOT mix English sentences into the answer.
-- Technical terms may remain in English only when absolutely necessary.
-- The actual explanation must be predominantly Devanagari Hindi.
-- Return ONLY the Hindi answer.
-"""
-
-    elif language == "Hinglish":
-
-        return """
-Write the complete answer in natural Hinglish.
-Use a comfortable mixture of Hindi and English.
-Hindi may be written in Roman/English script.
-Do not make it unnecessarily formal.
-"""
-
-    else:
-
-        return f"""
-Write the complete answer in {language}.
-Use the correct natural writing system for that language.
-Do not mix languages unnecessarily.
-Return ONLY the requested language.
-"""
-
-
-# ==========================================================
-# TRANSLATION HELPER
-# ==========================================================
-
-def translate_for_speech(
-    text,
-    target_language
-):
-
-    if not text:
-        return ""
-
-    cleaned_source = remove_thinking(text)
-
-    language_rules = get_language_instruction(
-        target_language
-    )
-
-    prompt = f"""
-You are a professional translator.
-
-Translate the following educational explanation
-into {target_language}.
-
-{language_rules}
-
-STRICT RULES:
-
-1. Translate ONLY the actual explanation.
-2. Do not add greetings.
-3. Do not add introduction.
-4. Do not mention AI.
-5. Do not add extra information.
-6. Do not remove important information.
-7. Preserve the original meaning exactly.
-8. Keep approximately the same paragraph and sentence structure.
-9. Do not add explanations about the translation.
-10. Do not write "Here is the translation".
-11. Return ONLY the translated text.
-
-SOURCE TEXT:
-
-{cleaned_source}
-"""
-
-    translator = ChatGroq(
-        api_key=st.secrets["GROQ_API_KEY"],
-        model_name="qwen/qwen3.6-27b",
-        temperature=0
-    )
-
-    response = translator.invoke(
-        [
-            HumanMessage(
-                content=prompt
-            )
-        ]
-    )
-
-    translated = getattr(
-        response,
-        "content",
-        ""
-    )
-
-    translated = remove_thinking(
-        translated
-    )
-
-    translated = clean_text_for_speech(
-        translated
-    )
-
-    return translated
-
-
-# ==========================================================
-# LANGUAGE SELECTORS
-#
-# IMPORTANT:
-# These are intentionally placed BEFORE file processing.
-# This fixes:
-# "name 'translation_language' is not defined"
-# ==========================================================
-
-# ==========================================================
 # TITLE
 # ==========================================================
 
@@ -1287,9 +1249,7 @@ st.sidebar.subheader(
     "📷 Camera"
 )
 
-
 camera_photo = None
-
 
 if not st.session_state.camera_enabled:
 
@@ -1326,7 +1286,6 @@ all_uploaded_files = (
     else []
 )
 
-
 if camera_photo is not None:
 
     all_uploaded_files.append(
@@ -1334,10 +1293,13 @@ if camera_photo is not None:
     )
 
 
+# ==========================================================
+# LANGUAGE
+# ==========================================================
+
 st.sidebar.header(
     "🌐 Language & Speaker"
 )
-
 
 translation_language = st.sidebar.selectbox(
     "🌐 Image / Document Language:",
@@ -1345,14 +1307,11 @@ translation_language = st.sidebar.selectbox(
     key="common_translation_language"
 )
 
-
 listen_language = st.sidebar.selectbox(
     "🔊 Smart Reader Language:",
     list(SPEAKER_LANGUAGE_CODES.keys()),
     key="common_listen_language"
 )
-
-
 
 
 # ==========================================================
@@ -1362,20 +1321,17 @@ listen_language = st.sidebar.selectbox(
 if all_uploaded_files:
 
     pdf_files = [
-        f
-        for f in all_uploaded_files
+        f for f in all_uploaded_files
         if f.name.lower().endswith(".pdf")
     ]
 
     doc_files = [
-        f
-        for f in all_uploaded_files
+        f for f in all_uploaded_files
         if f.name.lower().endswith(".doc")
     ]
 
     docx_files = [
-        f
-        for f in all_uploaded_files
+        f for f in all_uploaded_files
         if f.name.lower().endswith(".docx")
     ]
 
@@ -1393,8 +1349,7 @@ if all_uploaded_files:
     )
 
     image_files = [
-        f
-        for f in all_uploaded_files
+        f for f in all_uploaded_files
         if f.name.lower().endswith(
             image_extensions
         )
@@ -1458,7 +1413,6 @@ if all_uploaded_files:
                         )
 
 
-                    # PDF
                     if original_name.lower().endswith(
                         ".pdf"
                     ):
@@ -1483,7 +1437,6 @@ if all_uploaded_files:
                             )
 
 
-                    # DOCX
                     elif original_name.lower().endswith(
                         ".docx"
                     ):
@@ -1508,7 +1461,6 @@ if all_uploaded_files:
                             )
 
 
-                    # DOC
                     elif original_name.lower().endswith(
                         ".doc"
                     ):
@@ -1584,7 +1536,6 @@ if all_uploaded_files:
                             )
 
 
-                # CREATE VECTOR STORE
                 if all_documents:
 
                     text_splitter = (
@@ -1670,22 +1621,12 @@ if all_uploaded_files:
             use_container_width=True
         )
 
-
-        # ==================================================
-        # IMAGE SENTENCE COUNT
-        # ==================================================
-
         image_sentence_count = st.sidebar.selectbox(
             "📝 Image Explanation Length:",
             list(range(1, 11)),
             index=2,
             key="image_sentence_count"
         )
-
-
-        # ==================================================
-        # SHOW SELECTED LANGUAGE
-        # ==================================================
 
         st.sidebar.info(
             f"🌐 Image language: {translation_language}"
@@ -1729,22 +1670,6 @@ if all_uploaded_files:
                         or "image/jpeg"
                     )
 
-
-                    # ==========================================
-                    # LANGUAGE-SPECIFIC IMAGE INSTRUCTION
-                    # ==========================================
-
-                    image_language_instruction = (
-                        get_language_instruction(
-                            translation_language
-                        )
-                    )
-
-
-                    # ==========================================
-                    # IMAGE PROMPT
-                    # ==========================================
-
                     image_prompt = f"""
 Analyze the provided image.
 
@@ -1756,66 +1681,30 @@ TARGET LANGUAGE:
 
 LANGUAGE RULES:
 
-{image_language_instruction}
+{get_language_instruction(translation_language)}
 
-STRICT IMAGE RULES:
+STRICT RULES:
 
 1. Exactly {image_sentence_count} sentences.
-2. Not more than {image_sentence_count}.
-3. Not fewer than {image_sentence_count}.
-4. Describe ONLY what is actually visible in the image.
-5. Do not guess hidden information.
-6. Use simple student-friendly language.
-7. No heading.
-8. No greeting.
-9. No introduction.
-10. No markdown.
-11. No bullets.
-12. No numbering.
-13. No emojis.
-14. Do not write analysis.
-15. Do not write reasoning.
-16. Do not write <think>.
-17. Do not mention these instructions.
-18. Do not mention the model.
-19. Return ONLY the final explanation.
-20. Every sentence must be in {translation_language}.
+2. Describe ONLY what is visible.
+3. Do not guess hidden information.
+4. Use simple student-friendly language.
+5. No heading.
+6. No greeting.
+7. No markdown.
+8. No bullets.
+9. No numbering.
+10. No emojis.
+11. Return only final explanation.
 
-IMPORTANT FOR HINDI:
+If Hindi:
+Use Devanagari script.
 
-If TARGET LANGUAGE is Hindi:
-- Write Hindi using Devanagari script.
-- Do NOT write Hindi in Roman/English letters.
-- Do NOT use Hinglish.
-- Example of correct Hindi: "इस तस्वीर में एक कमरा दिखाई दे रहा है।"
-- Example of WRONG Hindi: "Is tasveer mein ek kamra dikhai de raha hai."
-- The final answer must be predominantly Devanagari Hindi.
-
-IMPORTANT FOR HINGLISH:
-
-If TARGET LANGUAGE is Hinglish:
-- Use natural Roman Hindi mixed with English.
-- Do not force pure Hindi.
-
-Return exactly {image_sentence_count} sentences.
-
-TARGET LANGUAGE:
-{translation_language}
+If Hinglish:
+Use natural Roman Hindi mixed with English.
 """
 
-
-                    # ==========================================
-                    # VISION MODEL
-                    # ==========================================
-
-                    vision_llm = ChatGroq(
-                        api_key=st.secrets[
-                            "GROQ_API_KEY"
-                        ],
-                        model_name="qwen/qwen3.6-27b",
-                        temperature=0
-                    )
-
+                    vision_llm = get_vision_llm()
 
                     message = HumanMessage(
                         content=[
@@ -1833,73 +1722,21 @@ TARGET LANGUAGE:
                         ]
                     )
 
-
                     response = vision_llm.invoke(
                         [message]
                     )
 
-
-                    # ==========================================
-                    # SAFE RESPONSE EXTRACTION
-                    # ==========================================
-
-                    image_explanation = getattr(
-                        response,
-                        "content",
-                        ""
-                    )
-
-
-                    if isinstance(
-                        image_explanation,
-                        list
-                    ):
-
-                        parts = []
-
-                        for item in image_explanation:
-
-                            if isinstance(
-                                item,
-                                dict
-                            ):
-
-                                if "text" in item:
-
-                                    parts.append(
-                                        str(
-                                            item["text"]
-                                        )
-                                    )
-
-                            else:
-
-                                parts.append(
-                                    str(item)
-                                )
-
-                        image_explanation = " ".join(
-                            parts
+                    image_explanation = (
+                        response_to_text(
+                            response
                         )
-
-
-                    image_explanation = str(
-                        image_explanation or ""
-                    ).strip()
-
-
-                    # ==========================================
-                    # REMOVE THINKING
-                    # ==========================================
-
-                    image_explanation = remove_thinking(
-                        image_explanation
                     )
 
-
-                    # ==========================================
-                    # REMOVE CODE FENCES
-                    # ==========================================
+                    image_explanation = (
+                        remove_thinking(
+                            image_explanation
+                        )
+                    )
 
                     image_explanation = re.sub(
                         r"```.*?```",
@@ -1908,11 +1745,6 @@ TARGET LANGUAGE:
                         flags=re.DOTALL
                     ).strip()
 
-
-                    # ==========================================
-                    # REMOVE PREFIX
-                    # ==========================================
-
                     image_explanation = re.sub(
                         r"^(answer|response|description)\s*:\s*",
                         "",
@@ -1920,28 +1752,16 @@ TARGET LANGUAGE:
                         flags=re.IGNORECASE
                     ).strip()
 
-
                     if not image_explanation:
 
                         raise ValueError(
                             "Image model returned an empty response."
                         )
 
-
-                    # ==========================================
-                    # SENTENCE SPLITTING
-                    #
-                    # Supports:
-                    # English .
-                    # Hindi ।
-                    # Bengali etc.
-                    # ==========================================
-
                     image_sentences = re.split(
                         r'(?<=[.!?।॥])\s+',
                         image_explanation
                     )
-
 
                     image_sentences = [
                         sentence.strip()
@@ -1949,46 +1769,21 @@ TARGET LANGUAGE:
                         if sentence.strip()
                     ]
 
+                    if len(image_sentences) < image_sentence_count:
 
-                    # ==========================================
-                    # LINE FALLBACK
-                    # ==========================================
+                        line_sentences = [
+                            line.strip()
+                            for line in image_explanation.splitlines()
+                            if line.strip()
+                        ]
 
-                    if (
-                        len(image_sentences)
-                        < image_sentence_count
-                    ):
-
-                        line_sentences = []
-
-                        for line in image_explanation.splitlines():
-
-                            line = line.strip()
-
-                            if line:
-
-                                line_sentences.append(
-                                    line
-                                )
-
-                        if (
-                            len(line_sentences)
-                            >= image_sentence_count
-                        ):
+                        if len(line_sentences) >= image_sentence_count:
 
                             image_sentences = (
                                 line_sentences
                             )
 
-
-                    # ==========================================
-                    # TOO MANY SENTENCES
-                    # ==========================================
-
-                    if (
-                        len(image_sentences)
-                        > image_sentence_count
-                    ):
+                    if len(image_sentences) > image_sentence_count:
 
                         image_sentences = (
                             image_sentences[
@@ -1996,15 +1791,7 @@ TARGET LANGUAGE:
                             ]
                         )
 
-
-                    # ==========================================
-                    # FINAL SENTENCE VALIDATION
-                    # ==========================================
-
-                    if (
-                        len(image_sentences)
-                        != image_sentence_count
-                    ):
+                    if len(image_sentences) != image_sentence_count:
 
                         raise ValueError(
                             f"AI generated "
@@ -2013,19 +1800,11 @@ TARGET LANGUAGE:
                             f"{image_sentence_count}."
                         )
 
-
                     image_explanation = " ".join(
                         image_sentences
                     )
 
-
-                    # ==========================================
-                    # EXTRA HINDI SAFETY
-                    #
-                    # If Hindi selected but model still
-                    # returns Roman Hindi, translate it again.
-                    # ==========================================
-
+                    # Hindi safety
                     if translation_language == "Hindi":
 
                         devanagari_count = len(
@@ -2042,39 +1821,22 @@ TARGET LANGUAGE:
                             )
                         )
 
-                        # If Roman text dominates,
-                        # force a second Hindi conversion.
-                        if (
-                            latin_count > devanagari_count
-                        ):
+                        if latin_count > devanagari_count:
 
                             hindi_prompt = f"""
-Convert the following explanation into PURE HINDI.
+Convert this text into pure Hindi.
 
-VERY IMPORTANT:
-- Use Devanagari script only.
-- Do not use Roman Hindi.
-- Do not use Hinglish.
-- Do not add or remove information.
-- Keep EXACTLY {image_sentence_count} sentences.
-- Describe only the same image information.
-- Return ONLY the Hindi sentences.
+Use Devanagari script only.
+
+Keep EXACTLY {image_sentence_count} sentences.
 
 TEXT:
 
 {image_explanation}
 """
 
-                            hindi_llm = ChatGroq(
-                                api_key=st.secrets[
-                                    "GROQ_API_KEY"
-                                ],
-                                model_name="qwen/qwen3.6-27b",
-                                temperature=0
-                            )
-
                             hindi_response = (
-                                hindi_llm.invoke(
+                                get_vision_llm().invoke(
                                     [
                                         HumanMessage(
                                             content=hindi_prompt
@@ -2083,57 +1845,31 @@ TEXT:
                                 )
                             )
 
-                            image_explanation = remove_thinking(
-                                getattr(
-                                    hindi_response,
-                                    "content",
-                                    ""
+                            image_explanation = (
+                                response_to_text(
+                                    hindi_response
                                 )
-                            ).strip()
+                            )
 
-                            image_explanation = re.sub(
-                                r"```.*?```",
-                                "",
-                                image_explanation,
-                                flags=re.DOTALL
-                            ).strip()
-
-
-                    # ==========================================
-                    # SAVE IMAGE EXPLANATION
-                    # ==========================================
+                            image_explanation = (
+                                remove_thinking(
+                                    image_explanation
+                                )
+                            )
 
                     st.session_state.image_explanation = (
                         image_explanation
                     )
 
-
-                    # ==========================================
-                    # CLEAR TRANSLATION CACHE
-                    # ==========================================
-
                     st.session_state.image_speaker_text = None
-
                     st.session_state.image_speaker_text_language = None
-
                     st.session_state.speaker_text = None
-
                     st.session_state.speaker_text_language = None
-
-
-                    # ==========================================
-                    # IMAGE NAME + LANGUAGE TRACKING
-                    # ==========================================
 
                     current_image_key = (
                         f"{img_to_process.name}"
                         f"__{translation_language}"
                     )
-
-
-                    # ==========================================
-                    # SAVE TO CHAT ONLY ONCE
-                    # ==========================================
 
                     if (
                         st.session_state.analyzed_image_name
@@ -2147,27 +1883,22 @@ TEXT:
                             f"{img_to_process.name}"
                         })
 
-
                         st.session_state.messages.append({
                             "role": "assistant",
                             "content":
                             image_explanation
                         })
 
-
                         st.session_state.analyzed_image_name = (
                             current_image_key
                         )
 
-
                     st.success(
-                        f"✅ Image explanation generated in "
-                        f"{translation_language}!"
+                        f"✅ Image explanation generated "
+                        f"in {translation_language}!"
                     )
 
-
                     st.rerun()
-
 
                 except Exception as e:
 
@@ -2188,7 +1919,6 @@ if st.session_state.vector_store is not None:
         "🎓 Document Study Tools"
     )
 
-
     explanation_level = st.sidebar.selectbox(
         "📊 Difficulty Level:",
         [
@@ -2199,47 +1929,32 @@ if st.session_state.vector_store is not None:
         key="document_explanation_level"
     )
 
-
     exam_points = st.sidebar.checkbox(
         "🎯 Include Exam Important Points",
         value=True,
         key="document_exam_points"
     )
 
-
-    language_instruction = get_language_instruction(
-        translation_language
-    )
-
-
     if explanation_level == "Easy":
 
         level_instruction = """
 Explain everything for a beginner.
-
-Use very simple language,
-short explanations and easy examples.
+Use very simple language and easy examples.
 """
 
     elif explanation_level == "Medium":
 
         level_instruction = """
 Explain at normal school/college level.
-
-Cover important concepts,
-definitions and useful examples.
+Cover important concepts, definitions and examples.
 """
 
     else:
 
         level_instruction = """
 Explain the topic deeply.
-
-Include technical details,
-advanced concepts,
-important relationships and examples.
+Include technical details and advanced concepts.
 """
-
 
     if exam_points:
 
@@ -2248,12 +1963,8 @@ At the end include:
 
 Exam Important Points
 
-Include:
-- Important definitions
-- Important concepts
-- Important formulas
-- Important facts
-- Possible exam questions
+Include important definitions,
+concepts, formulas, facts and possible questions.
 """
 
     else:
@@ -2287,12 +1998,10 @@ Include:
                     )
                 )
 
-
                 document_context = "\n\n".join(
                     doc.page_content
                     for doc in docs
                 )
-
 
                 explanation_prompt = f"""
 You are an expert teacher and AI Study Buddy.
@@ -2302,79 +2011,60 @@ Explain the uploaded study material.
 TARGET LANGUAGE:
 {translation_language}
 
-{language_instruction}
+{get_language_instruction(translation_language)}
 
 {level_instruction}
 
 {exam_instruction}
 
-IMPORTANT RULES:
+Rules:
 
 1. Only use information from the study material.
 2. Do not invent facts.
-3. Do not mention that you are an AI.
-4. Do not add unnecessary greetings.
-5. Do not add irrelevant information.
-6. Explain clearly for a student.
-7. Use proper paragraphs.
-8. Keep the explanation useful for studying.
-9. Return the answer in the selected language.
+3. Do not mention AI.
+4. Explain clearly.
+5. Return the selected language.
 
-Study Material:
+STUDY MATERIAL:
 
 {document_context}
 """
 
-
-                study_llm = ChatGroq(
-                    api_key=st.secrets[
-                        "GROQ_API_KEY"
-                    ],
-                    model_name="qwen/qwen3.6-27b",
-                    temperature=0
+                response = (
+                    get_vision_llm().invoke(
+                        [
+                            HumanMessage(
+                                content=explanation_prompt
+                            )
+                        ]
+                    )
                 )
 
-
-                response = study_llm.invoke(
-                    [
-                        HumanMessage(
-                            content=explanation_prompt
-                        )
-                    ]
+                explanation = (
+                    response_to_text(
+                        response
+                    )
                 )
 
-
-                explanation = getattr(
-                    response,
-                    "content",
-                    ""
+                explanation = (
+                    remove_thinking(
+                        explanation
+                    )
                 )
-
-
-                explanation = remove_thinking(
-                    explanation
-                )
-
 
                 st.session_state.document_explanation = (
                     explanation
                 )
 
-
                 st.session_state.document_speaker_text = None
-
                 st.session_state.document_speaker_text_language = None
-
                 st.session_state.speaker_text = None
-
                 st.session_state.speaker_text_language = None
-
 
                 st.success(
                     f"✅ Document explanation generated "
                     f"in {translation_language}!"
                 )
-
 
             except Exception as e:
 
@@ -2388,9 +2078,7 @@ Study Material:
 # ==========================================================
 
 reader_source_text = None
-
 reader_source_type = None
-
 
 if st.session_state.get(
     "document_explanation"
@@ -2414,7 +2102,7 @@ elif st.session_state.get(
 
 
 # ==========================================================
-# DISPLAY DOCUMENT EXPLANATION
+# DISPLAY DOCUMENT
 # ==========================================================
 
 if st.session_state.get(
@@ -2439,7 +2127,7 @@ if st.session_state.get(
 
 
 # ==========================================================
-# DISPLAY IMAGE EXPLANATION
+# DISPLAY IMAGE
 # ==========================================================
 
 if st.session_state.get(
@@ -2479,16 +2167,6 @@ if reader_source_text:
         f"Reading language: {listen_language}"
     )
 
-    st.caption(
-        "Choose the reading language and click any "
-        "sentence to start reading from there."
-    )
-
-
-    # ======================================================
-    # SELECT CACHE
-    # ======================================================
-
     if reader_source_type == "Image":
 
         cached_text = (
@@ -2509,17 +2187,11 @@ if reader_source_text:
             st.session_state.document_speaker_text_language
         )
 
-
-    # ======================================================
-    # PREPARE SPEECH TEXT
-    # ======================================================
-
     if listen_language == translation_language:
 
         speech_text = clean_text_for_speech(
             reader_source_text
         )
-
 
     elif (
         cached_text
@@ -2528,7 +2200,6 @@ if reader_source_text:
     ):
 
         speech_text = cached_text
-
 
     else:
 
@@ -2556,17 +2227,11 @@ if reader_source_text:
                         )
                     )
 
-
                     if not translated_text:
 
                         raise ValueError(
                             "Translation returned empty text."
                         )
-
-
-                    # ==========================================
-                    # SAVE CORRECT CACHE
-                    # ==========================================
 
                     if reader_source_type == "Image":
 
@@ -2588,7 +2253,6 @@ if reader_source_text:
                             listen_language
                         )
 
-
                     st.session_state.speaker_text = (
                         translated_text
                     )
@@ -2597,15 +2261,11 @@ if reader_source_text:
                         listen_language
                     )
 
-
                     st.success(
-                        f"✅ {listen_language} "
-                        f"reading ready!"
+                        f"✅ {listen_language} reading ready!"
                     )
 
-
                     st.rerun()
-
 
                 except Exception as e:
 
@@ -2620,15 +2280,10 @@ if reader_source_text:
 
     if speech_text:
 
-        # IMPORTANT:
-        # Hindi uses both "." and "।"
-        # This splitter handles both.
-
         sentences = re.split(
             r'(?<=[.!?।॥])\s+',
             speech_text
         )
-
 
         sentences = [
             sentence.strip()
@@ -2636,12 +2291,10 @@ if reader_source_text:
             if sentence.strip()
         ]
 
-
         sentences_json = json.dumps(
             sentences,
             ensure_ascii=False
         )
-
 
         language_code = (
             SPEAKER_LANGUAGE_CODES[
@@ -2649,10 +2302,8 @@ if reader_source_text:
             ]
         )
 
-
         reader_html = """
 <!DOCTYPE html>
-
 <html>
 
 <head>
@@ -2755,7 +2406,6 @@ if reader_source_text:
 Ready to read
 </div>
 
-
 <script>
 
 const readerSentences =
@@ -2764,25 +2414,17 @@ const readerSentences =
 const readerLanguage =
     "__LANGUAGE__";
 
-
 const readerBox =
     document.getElementById(
         "readerBox"
     );
-
 
 const readerStatus =
     document.getElementById(
         "readerStatus"
     );
 
-
 let currentSentence = 0;
-
-
-// ==========================================================
-// FIND BEST VOICE
-// ==========================================================
 
 function getBestVoice(language) {
 
@@ -2796,16 +2438,13 @@ function getBestVoice(language) {
     const target =
         language.toLowerCase();
 
-    // Exact language match first
     let voice =
         voices.find(
             function(v) {
-
                 return (
                     v.lang &&
                     v.lang.toLowerCase() === target
                 );
-
             }
         );
 
@@ -2813,53 +2452,23 @@ function getBestVoice(language) {
         return voice;
     }
 
-
-    // Hindi fallback
-    if (target.startsWith("hi")) {
-
-        voice =
-            voices.find(
-                function(v) {
-
-                    return (
-                        v.lang &&
-                        v.lang.toLowerCase().startsWith("hi")
-                    );
-
-                }
-            );
-
-        if (voice) {
-            return voice;
-        }
-    }
-
-
-    // General language fallback
     const shortLanguage =
         target.split("-")[0];
 
     voice =
         voices.find(
             function(v) {
-
                 return (
                     v.lang &&
                     v.lang.toLowerCase().startsWith(
                         shortLanguage
                     )
                 );
-
             }
         );
 
     return voice || null;
 }
-
-
-// ==========================================================
-// LOAD VOICES
-// ==========================================================
 
 window.speechSynthesis.onvoiceschanged =
     function() {
@@ -2867,11 +2476,6 @@ window.speechSynthesis.onvoiceschanged =
         window.speechSynthesis.getVoices();
 
     };
-
-
-// ==========================================================
-// CREATE SENTENCES
-// ==========================================================
 
 readerSentences.forEach(
     function(sentence, index) {
@@ -2905,11 +2509,6 @@ readerSentences.forEach(
     }
 );
 
-
-// ==========================================================
-// CLEAR HIGHLIGHT
-// ==========================================================
-
 function clearHighlight() {
 
     document
@@ -2928,11 +2527,6 @@ function clearHighlight() {
 
 }
 
-
-// ==========================================================
-// START FROM CLICKED SENTENCE
-// ==========================================================
-
 function startFrom(index) {
 
     window.speechSynthesis.cancel();
@@ -2943,11 +2537,6 @@ function startFrom(index) {
 
 }
 
-
-// ==========================================================
-// START
-// ==========================================================
-
 function startReader() {
 
     window.speechSynthesis.cancel();
@@ -2957,11 +2546,6 @@ function startReader() {
     speakCurrent();
 
 }
-
-
-// ==========================================================
-// SPEAK CURRENT
-// ==========================================================
 
 function speakCurrent() {
 
@@ -2979,19 +2563,15 @@ function speakCurrent() {
 
     }
 
-
     clearHighlight();
-
 
     const elements =
         document.querySelectorAll(
             ".reader-sentence"
         );
 
-
     const current =
         elements[currentSentence];
-
 
     if (current) {
 
@@ -3006,7 +2586,6 @@ function speakCurrent() {
 
     }
 
-
     const utterance =
         new SpeechSynthesisUtterance(
             readerSentences[
@@ -3014,21 +2593,13 @@ function speakCurrent() {
             ]
         );
 
-
-    // IMPORTANT:
-    // Selected language is passed directly
-    // to browser speech engine.
-
     utterance.lang =
         readerLanguage;
 
-
-    // Find Hindi/English/etc voice
     const selectedVoice =
         getBestVoice(
             readerLanguage
         );
-
 
     if (selectedVoice) {
 
@@ -3037,21 +2608,17 @@ function speakCurrent() {
 
     }
 
-
     utterance.rate =
         0.90;
 
-
     utterance.pitch =
         1.0;
-
 
     readerStatus.textContent =
         "🔊 Reading sentence "
         + (currentSentence + 1)
         + " of "
         + readerSentences.length;
-
 
     utterance.onend =
         function() {
@@ -3062,30 +2629,19 @@ function speakCurrent() {
 
         };
 
-
     utterance.onerror =
-        function(event) {
+        function() {
 
             readerStatus.textContent =
-                "⚠️ Speech could not be played. "
-                + "Please check that your browser "
-                + "supports "
-                + readerLanguage
-                + " voice.";
+                "⚠️ Speech could not be played.";
 
         };
-
 
     window.speechSynthesis.speak(
         utterance
     );
 
 }
-
-
-// ==========================================================
-// PAUSE
-// ==========================================================
 
 function pauseReader() {
 
@@ -3096,11 +2652,6 @@ function pauseReader() {
 
 }
 
-
-// ==========================================================
-// RESUME
-// ==========================================================
-
 function resumeReader() {
 
     window.speechSynthesis.resume();
@@ -3109,11 +2660,6 @@ function resumeReader() {
         "▶️ Reading resumed";
 
 }
-
-
-// ==========================================================
-// STOP
-// ==========================================================
 
 function stopReader() {
 
@@ -3131,22 +2677,18 @@ function stopReader() {
 </script>
 
 </body>
-
 </html>
 """
-
 
         reader_html = reader_html.replace(
             "__SENTENCES__",
             sentences_json
         )
 
-
         reader_html = reader_html.replace(
             "__LANGUAGE__",
             language_code
         )
-
 
         components.html(
             reader_html,
@@ -3196,36 +2738,29 @@ if st.sidebar.button(
                 docs = (
                     st.session_state.vector_store
                     .similarity_search(
-                        "core concepts definitions "
-                        "important topics",
+                        "core concepts definitions important topics",
                         k=10
                     )
                 )
-
 
                 context = "\n\n".join(
                     doc.page_content
                     for doc in docs
                 )
 
-
                 quiz_prompt = f"""
-You are an expert teacher.
-
-Based ONLY on the following study material,
-create exactly {num_questions} multiple-choice questions.
+Based ONLY on this study material,
+create exactly {num_questions} MCQs.
 
 STUDY MATERIAL:
 
 {context}
 
-Return ONLY valid JSON.
-
-Required format:
+Return ONLY valid JSON:
 
 [
   {{
-    "question": "Question here",
+    "question": "Question",
     "options": [
       "Option A",
       "Option B",
@@ -3239,18 +2774,15 @@ Required format:
 Rules:
 
 - Exactly {num_questions} questions.
-- Exactly 4 options per question.
-- The answer must exactly match one option.
+- Exactly 4 options.
+- Answer must exactly match one option.
 - No markdown.
 - No explanation.
-- No text before or after JSON.
 """
-
 
                 raw_text = ask_llm(
                     quiz_prompt
                 )
-
 
                 clean_text = (
                     clean_json_response(
@@ -3258,11 +2790,9 @@ Rules:
                     )
                 )
 
-
                 quiz_data = json.loads(
                     clean_text
                 )
-
 
                 if not isinstance(
                     quiz_data,
@@ -3273,9 +2803,7 @@ Rules:
                         "Quiz response is not a list."
                     )
 
-
                 valid_quiz = []
-
 
                 for question in quiz_data:
 
@@ -3309,26 +2837,21 @@ Rules:
                         question
                     )
 
-
                 if len(valid_quiz) < num_questions:
 
                     raise ValueError(
                         "AI did not generate enough valid questions."
                     )
 
-
                 st.session_state.quiz_data = (
                     valid_quiz[:num_questions]
                 )
-
 
                 st.sidebar.success(
                     "✅ Quiz generated!"
                 )
 
-
                 st.rerun()
-
 
             except Exception as e:
 
@@ -3363,24 +2886,18 @@ if st.sidebar.button(
                 docs = (
                     st.session_state.vector_store
                     .similarity_search(
-                        "comprehensive summary "
-                        "core themes definitions",
+                        "comprehensive summary core themes definitions",
                         k=8
                     )
                 )
-
 
                 context = "\n\n".join(
                     doc.page_content
                     for doc in docs
                 )
 
-
                 summary_prompt = f"""
-You are an expert teacher.
-
-Create a highly structured study summary
-from the following material.
+Create a highly structured study summary.
 
 TARGET LANGUAGE:
 {translation_language}
@@ -3399,19 +2916,11 @@ Requirements:
 - Important concepts
 - Exam-focused points
 - Easy language
-- No unnecessary introduction
 """
-
 
                 summary_result = ask_llm(
                     summary_prompt
                 )
-
-
-                summary_result = remove_thinking(
-                    summary_result
-                )
-
 
                 st.session_state.messages.append({
                     "role": "assistant",
@@ -3420,9 +2929,7 @@ Requirements:
                     + summary_result
                 })
 
-
                 st.rerun()
-
 
             except Exception as e:
 
@@ -3457,54 +2964,41 @@ if st.sidebar.button(
                 docs = (
                     st.session_state.vector_store
                     .similarity_search(
-                        "main topics chapters concepts "
-                        "headings important subjects",
+                        "main topics chapters concepts headings important subjects",
                         k=12
                     )
                 )
-
 
                 context = "\n\n".join(
                     str(doc.page_content)
                     for doc in docs
                 )
 
-
                 topic_prompt = f"""
-You are an educational content analyzer.
-
-Analyze the study material below and identify
-the most important topics that a student should study.
+Identify the most important topics from this study material.
 
 STUDY MATERIAL:
 
 {context}
 
-RULES:
+Rules:
 
 1. Return ONLY a numbered list.
-2. Give 5 to 10 important topics.
+2. Give 5 to 10 topics.
 3. Each topic must be short.
-4. Do not give explanations.
-5. Do not use markdown headings.
-6. Do not repeat topics.
-7. Use topics that actually appear in or are strongly
-   related to the study material.
+4. No explanations.
+5. No repeated topics.
 """
-
 
                 raw_response = ask_llm(
                     topic_prompt
                 )
 
-
                 raw_text = remove_thinking(
                     str(raw_response)
                 ).strip()
 
-
                 topics = []
-
 
                 for line in raw_text.splitlines():
 
@@ -3513,13 +3007,11 @@ RULES:
                     if not line:
                         continue
 
-
                     line = re.sub(
                         r"^\s*\d+[\.\)\-:]\s*",
                         "",
                         line
                     )
-
 
                     line = re.sub(
                         r"^\s*[-*•]\s*",
@@ -3527,9 +3019,7 @@ RULES:
                         line
                     )
 
-
                     line = line.strip()
-
 
                     if (
                         line
@@ -3537,17 +3027,15 @@ RULES:
                         len(line) > 2
                         and
                         len(line) <= 100
+                        and
+                        line not in topics
                     ):
 
-                        if line not in topics:
-
-                            topics.append(
-                                line
-                            )
-
+                        topics.append(
+                            line
+                        )
 
                 topics = topics[:10]
-
 
                 if not topics:
 
@@ -3555,18 +3043,15 @@ RULES:
                         "Could not identify study topics."
                     )
 
-
                 st.session_state.mindmap_topics = topics
 
                 st.session_state.selected_mindmap_topic = (
                     topics[0]
                 )
 
-
                 st.sidebar.success(
                     f"Found {len(topics)} study topics!"
                 )
-
 
             except Exception as e:
 
@@ -3582,7 +3067,7 @@ RULES:
 
 
 # ==========================================================
-# SELECT TOPIC
+# SELECT TOPIC + MIND MAP
 # ==========================================================
 
 if st.session_state.mindmap_topics:
@@ -3593,17 +3078,11 @@ if st.session_state.mindmap_topics:
         "🧠 Select a Topic"
     )
 
-
     selected_topic = st.sidebar.selectbox(
         "Choose a topic for your Mind Map:",
         st.session_state.mindmap_topics,
         key="selected_mindmap_topic"
     )
-
-
-    # ======================================================
-    # GENERATE MIND MAP
-    # ======================================================
 
     if st.sidebar.button(
         "🗺️ Generate Mind Map",
@@ -3613,8 +3092,7 @@ if st.session_state.mindmap_topics:
         if st.session_state.vector_store is not None:
 
             with st.spinner(
-                f"Designing Mind Map for "
-                f"{selected_topic}..."
+                f"Designing Mind Map for {selected_topic}..."
             ):
 
                 try:
@@ -3627,17 +3105,13 @@ if st.session_state.mindmap_topics:
                         )
                     )
 
-
                     context = "\n\n".join(
                         str(doc.page_content)
                         for doc in docs
                     )
 
-
                     mindmap_prompt = f"""
-You are an expert educational mind-map designer.
-
-Create a VALID Graphviz DOT mind map ONLY for:
+Create a VALID Graphviz DOT mind map.
 
 TOPIC:
 {selected_topic}
@@ -3645,38 +3119,30 @@ TOPIC:
 STUDY MATERIAL:
 {context}
 
-STRICT RULES:
+Rules:
 
-1. Return ONLY valid Graphviz DOT code.
-2. Do NOT use markdown.
-3. Do NOT use code fences.
-4. Do NOT write any explanation.
-5. The first word MUST be digraph.
-6. Use exactly:
-   digraph G {{
-7. Use rankdir=LR.
-8. Create one central topic.
-9. Connect the central topic to major concepts.
-10. Add useful subtopics.
-11. Maximum 15 nodes.
-12. Every node label must be inside double quotes.
-13. Every edge must use:
-    "Parent" -> "Child";
-14. Do not put double quotes inside node labels.
-15. Avoid special characters that can break DOT syntax.
-16. Keep labels short and readable.
+1. Return ONLY valid Graphviz DOT.
+2. No markdown.
+3. First word must be digraph.
+4. Use:
+digraph G {{
+5. Use rankdir=LR.
+6. Create one central topic.
+7. Connect central topic to concepts.
+8. Maximum 15 nodes.
+9. Node labels must be inside double quotes.
+10. Edges must use:
+"Parent" -> "Child";
+11. Keep labels short.
 """
-
 
                     raw_response = ask_llm(
                         mindmap_prompt
                     )
 
-
                     raw_text = remove_thinking(
                         str(raw_response)
                     ).strip()
-
 
                     raw_text = re.sub(
                         r"```(?:dot|graphviz)?",
@@ -3685,12 +3151,10 @@ STRICT RULES:
                         flags=re.IGNORECASE
                     )
 
-
                     raw_text = raw_text.replace(
                         "```",
                         ""
                     ).strip()
-
 
                     match = re.search(
                         r"\bdigraph\b",
@@ -3698,23 +3162,19 @@ STRICT RULES:
                         flags=re.IGNORECASE
                     )
 
-
                     if not match:
 
                         raise ValueError(
                             "AI did not return Graphviz DOT code."
                         )
 
-
                     clean_dot = raw_text[
                         match.start():
                     ].strip()
 
-
                     end_idx = clean_dot.rfind(
                         "}"
                     )
-
 
                     if end_idx == -1:
 
@@ -3722,20 +3182,9 @@ STRICT RULES:
                             "Graphviz code is incomplete."
                         )
 
-
                     clean_dot = clean_dot[
                         :end_idx + 1
                     ].strip()
-
-
-                    if not clean_dot.lower().startswith(
-                        "digraph"
-                    ):
-
-                        raise ValueError(
-                            "Invalid Graphviz format."
-                        )
-
 
                     st.markdown("---")
 
@@ -3743,12 +3192,10 @@ STRICT RULES:
                         f"🗺️ Mind Map: {selected_topic}"
                     )
 
-
                     st.graphviz_chart(
                         clean_dot,
                         use_container_width=True
                     )
-
 
                 except Exception as e:
 
@@ -3789,26 +3236,24 @@ if st.sidebar.button(
                 docs = (
                     st.session_state.vector_store
                     .similarity_search(
-                        "important terms definitions "
-                        "key concepts",
+                        "important terms definitions key concepts",
                         k=5
                     )
                 )
-
 
                 context = "\n\n".join(
                     doc.page_content
                     for doc in docs
                 )
 
-
                 prompt = f"""
-Create exactly 6 important flashcards
-from this study material:
+Create exactly 6 important flashcards.
+
+MATERIAL:
 
 {context}
 
-Return ONLY valid JSON in this format:
+Return ONLY valid JSON:
 
 [
   {{
@@ -3816,56 +3261,37 @@ Return ONLY valid JSON in this format:
     "definition": "Simple definition"
   }}
 ]
-
-No markdown.
-No explanation.
 """
 
-
-                response = llm.invoke([
-                    HumanMessage(
-                        content=prompt
-                    )
-                ])
-
-
-                text = remove_thinking(
-                    response.content
-                ).strip()
-
-                text = text.replace(
-                    "```json",
-                    ""
+                response = get_llm().invoke(
+                    [
+                        HumanMessage(
+                            content=prompt
+                        )
+                    ]
                 )
 
-                text = text.replace(
-                    "```",
-                    ""
-                ).strip()
+                text = response_to_text(
+                    response
+                )
 
-
-                start = text.find("[")
-
-                end = text.rfind("]") + 1
-
+                text = clean_json_response(
+                    text
+                )
 
                 cards = json.loads(
-                    text[start:end]
+                    text
                 )
-
 
                 st.session_state.flashcards = (
                     cards[:6]
                 )
 
-
                 st.sidebar.success(
                     "✅ Flashcards ready!"
                 )
 
-
                 st.rerun()
-
 
             except Exception as e:
 
@@ -3890,9 +3316,7 @@ if st.session_state.flashcards:
         "Hover over a card to flip it 👆"
     )
 
-
     cols = st.columns(3)
-
 
     for i, card in enumerate(
         st.session_state.flashcards
@@ -3905,14 +3329,12 @@ if st.session_state.flashcards:
             )
         )
 
-
         definition = str(
             card.get(
                 "definition",
                 ""
             )
         )
-
 
         term_html = (
             term
@@ -3921,14 +3343,12 @@ if st.session_state.flashcards:
             .replace(">", "&gt;")
         )
 
-
         definition_html = (
             definition
             .replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
         )
-
 
         card_html = f"""
 <!DOCTYPE html>
@@ -4024,7 +3444,6 @@ body {{
 </html>
 """
 
-
         with cols[i % 3]:
 
             components.html(
@@ -4046,13 +3465,11 @@ if st.session_state.quiz_data:
         "📝 Your Interactive Quiz"
     )
 
-
     with st.form(
         "interactive_quiz_form"
     ):
 
         user_answers = []
-
 
         for i, q in enumerate(
             st.session_state.quiz_data
@@ -4063,7 +3480,6 @@ if st.session_state.quiz_data:
                 f"{q['question']}**"
             )
 
-
             ans = st.radio(
                 f"Select option for Q{i + 1}:",
                 q["options"],
@@ -4072,30 +3488,24 @@ if st.session_state.quiz_data:
                 index=None
             )
 
-
             user_answers.append(
                 ans
             )
 
-
             st.write("")
-
 
         submitted = st.form_submit_button(
             "Submit Answers"
         )
-
 
     if submitted:
 
         score = 0
         wrong = 0
 
-
         st.markdown(
             "### 📊 Quiz Results"
         )
-
 
         for i, q in enumerate(
             st.session_state.quiz_data
@@ -4110,7 +3520,6 @@ if st.session_state.quiz_data:
                     f"({q['answer']})"
                 )
 
-
             elif user_answers[i] is None:
 
                 wrong += 1
@@ -4120,7 +3529,6 @@ if st.session_state.quiz_data:
                     f"Correct answer: "
                     f"'{q['answer']}'"
                 )
-
 
             else:
 
@@ -4134,18 +3542,15 @@ if st.session_state.quiz_data:
                     f"'{q['answer']}'"
                 )
 
-
         total_questions = len(
             st.session_state.quiz_data
         )
-
 
         st.info(
             f"**Final Score: {score} Correct, "
             f"{wrong} Incorrect out of "
             f"{total_questions}.**"
         )
-
 
         if st.button(
             "❌ Close Quiz",
@@ -4167,7 +3572,6 @@ st.sidebar.title(
     "⚙️ Chat Settings"
 )
 
-
 font_size = st.sidebar.slider(
     "Font size",
     min_value=12,
@@ -4175,7 +3579,6 @@ font_size = st.sidebar.slider(
     value=16,
     key="chat_font_size"
 )
-
 
 st.markdown(
     f"""
@@ -4206,7 +3609,6 @@ lang_option = st.sidebar.selectbox(
     key="chat_voice_language"
 )
 
-
 selected_lang = (
     "hi"
     if lang_option == "Hindi"
@@ -4229,7 +3631,7 @@ if st.sidebar.button(
 
 
 # ==========================================================
-# MANUAL TEXT TO SPEECH
+# MANUAL TTS
 # ==========================================================
 
 st.sidebar.markdown("---")
@@ -4238,13 +3640,11 @@ st.sidebar.title(
     "Text to Speech App"
 )
 
-
 sidebar_text = st.sidebar.text_area(
     "Write your text here:",
     "",
     key="manual_tts_text"
 )
-
 
 if st.sidebar.button(
     "Play Audio",
@@ -4261,23 +3661,19 @@ if st.sidebar.button(
                 )
             )
 
-
             tts = gTTS(
                 text=clean_sidebar_text,
                 lang=selected_lang
             )
 
-
             tts.save(
                 "response.mp3"
             )
-
 
             st.sidebar.audio(
                 "response.mp3",
                 format="audio/mp3"
             )
-
 
         except Exception as e:
 
@@ -4306,29 +3702,24 @@ if len(
         "📥 Export Your Notes"
     )
 
-
     current_time = datetime.now().strftime(
         "%d-%B-%Y %H:%M"
     )
-
 
     report_text = (
         "📚 AI STUDY BUDDY "
         "- COMPLETE STUDY REPORT 📚\n"
     )
 
-
     report_text += (
         f"Generated on: "
         f"{current_time}\n"
     )
 
-
     report_text += (
         "=" * 60
         + "\n\n"
     )
-
 
     for msg in st.session_state.messages:
 
@@ -4338,13 +3729,11 @@ if len(
             else "🤖 AI TEACHER"
         )
 
-
         report_text += (
             f"{role}:\n"
             f"{msg['content']}\n\n"
             f"{'-' * 60}\n\n"
         )
-
 
     st.sidebar.download_button(
         label="📄 Download Full Study Report",
@@ -4364,30 +3753,23 @@ st.sidebar.subheader(
     "📊 My Progress"
 )
 
-
 total_questions = sum(
     1
     for msg in st.session_state.messages
     if msg["role"] == "user"
 )
 
-
 total_docs = len(
     st.session_state.processed_files
 )
 
-
 words_learned = sum(
-    len(
-        msg["content"].split()
-    )
+    len(msg["content"].split())
     for msg in st.session_state.messages
     if msg["role"] == "assistant"
 )
 
-
 col1, col2 = st.sidebar.columns(2)
-
 
 with col1:
 
@@ -4396,7 +3778,6 @@ with col1:
         value=total_questions
     )
 
-
 with col2:
 
     st.metric(
@@ -4404,12 +3785,10 @@ with col2:
         value=total_docs
     )
 
-
 st.sidebar.metric(
     label="Words Learned (approx)",
     value=words_learned
 )
-
 
 if total_questions > 0:
 
@@ -4417,17 +3796,14 @@ if total_questions > 0:
         "Study Streak 🔥"
     )
 
-
     progress_val = min(
         total_questions * 10,
         100
     )
 
-
     st.sidebar.progress(
         progress_val
     )
-
 
 else:
 
@@ -4437,10 +3813,6 @@ else:
     )
 
 
-st.session_state.messages.append({
-    "role": "assistant",
-    "content": error_message
-})
 # ==========================================================
 # MAIN CHAT
 # ==========================================================
@@ -4453,26 +3825,8 @@ st.subheader(
 
 
 # ==========================================================
-# INITIALIZE CHAT HISTORY
-# ==========================================================
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-
-# ==========================================================
-# INITIALIZE AUDIO TRACKING
-# ==========================================================
-
-if "last_audio_id" not in st.session_state:
-    st.session_state.last_audio_id = None
-
-
-# ==========================================================
 # DISPLAY CHAT HISTORY
 # ==========================================================
-# ALL OLD + NEW CHAT MESSAGES APPEAR HERE
-# ABOVE THE INPUT BOXES
 
 for message in st.session_state.messages:
 
@@ -4482,7 +3836,9 @@ for message in st.session_state.messages:
 
         st.markdown(
             remove_thinking(
-                message["content"]
+                str(
+                    message["content"]
+                )
             )
         )
 
@@ -4495,18 +3851,16 @@ st.write(
     "🎤 **Tap the microphone and ask your question:**"
 )
 
-
 audio = st.audio_input(
     "Start Recording",
     key="my_voice_mic"
 )
 
-
 voice_input = None
 
 
 # ==========================================================
-# PROCESS NEW VOICE RECORDING
+# PROCESS VOICE
 # ==========================================================
 
 if audio is not None:
@@ -4517,34 +3871,26 @@ if audio is not None:
         audio_bytes
     )
 
-
-    # ------------------------------------------------------
-    # ONLY PROCESS NEW RECORDING
-    # ------------------------------------------------------
-
     if (
         current_audio_id
-        != st.session_state.last_audio_id
+        != st.session_state.get(
+            "last_audio_id"
+        )
     ):
 
         st.session_state.last_audio_id = (
             current_audio_id
         )
 
-
         st.info(
             "🔄 Your voice is being processed..."
         )
 
-
         try:
 
             client = Groq(
-                api_key=st.secrets[
-                    "GROQ_API_KEY"
-                ]
+                api_key=get_groq_api_key()
             )
-
 
             transcription = (
                 client.audio.transcriptions.create(
@@ -4557,11 +3903,9 @@ if audio is not None:
                 )
             )
 
-
             voice_input = str(
                 transcription
             ).strip()
-
 
             if voice_input:
 
@@ -4578,11 +3922,10 @@ if audio is not None:
 
                 voice_input = None
 
-
         except Exception as e:
 
             st.error(
-                f"❌ Audio samajhne mein error aayi: {e}"
+                f"❌ Audio processing error: {e}"
             )
 
             voice_input = None
@@ -4603,15 +3946,22 @@ text_input = st.chat_input(
 
 prompt = (
     text_input
-    or voice_input
+    if text_input
+    else voice_input
 )
 
 
 # ==========================================================
-# CHAT PROCESSING
+# MAIN CHAT PROCESSING
 # ==========================================================
 
 if prompt:
+
+    prompt = str(prompt).strip()
+
+    if not prompt:
+        st.warning("Please enter a question.")
+        st.stop()
 
     # ------------------------------------------------------
     # SAVE USER MESSAGE
@@ -4622,67 +3972,67 @@ if prompt:
         "content": prompt
     })
 
-
     # ------------------------------------------------------
     # DISPLAY USER MESSAGE
     # ------------------------------------------------------
 
-    with st.chat_message(
-        "user"
-    ):
-
-        st.markdown(
-            prompt
-        )
-
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
     # ------------------------------------------------------
     # AI RESPONSE
     # ------------------------------------------------------
 
-    with st.chat_message(
-        "assistant"
-    ):
+    with st.chat_message("assistant"):
 
-        with st.spinner(
-            "Thinking..."
-        ):
+        with st.spinner("Thinking..."):
 
             try:
 
+                answer = ""
+
                 # ==================================================
-                # LONG-TERM MEMORY
+                # MEMORY
                 # ==================================================
 
-                memory_context = get_memory_context(
-                    prompt,
-                    max_memories=8
-                )
-
+                try:
+                    memory_context = get_memory_context(
+                        prompt,
+                        max_memories=8
+                    )
+                except Exception:
+                    memory_context = (
+                        "No long-term memory is available "
+                        "for this user."
+                    )
 
                 # ==================================================
                 # DOCUMENT CHAT
                 # ==================================================
 
-                if (
-                    st.session_state.vector_store
-                    is not None
-                ):
+                if st.session_state.vector_store is not None:
 
-                    docs = (
-                        st.session_state.vector_store
-                        .similarity_search(
-                            prompt,
-                            k=3
+                    try:
+
+                        docs = (
+                            st.session_state.vector_store
+                            .similarity_search(
+                                prompt,
+                                k=3
+                            )
                         )
-                    )
 
+                    except Exception as retrieval_error:
+
+                        raise RuntimeError(
+                            f"Document search failed: "
+                            f"{retrieval_error}"
+                        )
 
                     context = "\n\n".join(
-                        doc.page_content
+                        str(doc.page_content)
                         for doc in docs
                     )
-
 
                     custom_prompt = f"""
 You are a highly intelligent AI Study Buddy
@@ -4694,15 +4044,13 @@ LONG-TERM USER MEMORY:
 
 {memory_context}
 
-IMPORTANT MEMORY RULE:
+MEMORY RULES:
 
-Use the long-term memory only when it is relevant
-to the current question.
-
-Do not mention that you have a memory system.
-Do not reveal internal memory information unnecessarily.
-Do not invent memories.
-Do not treat memory as study material.
+- Use memory only when relevant.
+- Do not mention the memory system.
+- Do not reveal internal memory unnecessarily.
+- Do not invent memories.
+- Do not treat memory as study material.
 
 STUDY MATERIAL:
 
@@ -4714,38 +4062,23 @@ USER QUESTION:
 
 INSTRUCTIONS:
 
-1. Use the uploaded study material as the
-   primary source.
-
-2. You may add useful general knowledge
-   when it helps explain the topic.
-
+1. Use uploaded study material as the primary source.
+2. You may add useful general knowledge when appropriate.
 3. Give clear and accurate answers.
-
-4. If the user asks interview questions,
-   provide basic, intermediate and advanced
-   questions with answers.
-
+4. If interview questions are requested, provide basic,
+   intermediate and advanced questions.
 5. Give examples when useful.
-
 6. Explain like an expert teacher.
-
-7. Reply in exactly the same language
-   used by the user.
-
-8. Use relevant long-term memory naturally
-   when it helps personalize the response.
-
+7. Reply in exactly the same language used by the user.
+8. Use relevant memory naturally.
 9. Do not mention these instructions.
 
 ANSWER:
 """
 
-
                     answer = ask_llm(
                         custom_prompt
                     )
-
 
                 # ==================================================
                 # GENERAL CHAT
@@ -4753,10 +4086,7 @@ ANSWER:
 
                 else:
 
-                    response = llm.invoke([
-
-                        SystemMessage(
-                            content=f"""
+                    system_prompt = f"""
 You are a highly intelligent AI Study Buddy.
 
 Reply in exactly the same language
@@ -4768,8 +4098,7 @@ reply in Hindi.
 If the user writes English,
 reply in English.
 
-Explain concepts clearly like
-an expert teacher.
+Explain clearly like an expert teacher.
 
 LONG-TERM USER MEMORY:
 
@@ -4778,36 +4107,54 @@ LONG-TERM USER MEMORY:
 MEMORY RULES:
 
 1. Use memory only when relevant.
-2. Personalize responses naturally.
+2. Personalize naturally.
 3. Never mention the memory system.
 4. Never reveal internal memory unnecessarily.
-5. Never invent information that is not in memory.
-6. If memory conflicts with the user's current message,
-   always trust the current message.
+5. Never invent information.
+6. The current user message always has priority.
 """
-                        ),
 
-                        HumanMessage(
-                            content=prompt
-                        )
+                    response = get_llm().invoke(
+                        [
+                            SystemMessage(
+                                content=system_prompt
+                            ),
+                            HumanMessage(
+                                content=prompt
+                            )
+                        ]
+                    )
 
-                    ])
-
-
-                    answer = response.content
-
+                    answer = response_to_text(
+                        response
+                    )
 
                 # ==================================================
-                # REMOVE THINKING
+                # FINAL ANSWER CLEANUP
                 # ==================================================
 
                 answer = remove_thinking(
                     answer
                 )
 
+                answer = str(
+                    answer
+                ).strip()
+
+                if not answer:
+
+                    raise RuntimeError(
+                        "AI returned an empty answer."
+                    )
 
                 # ==================================================
-                # SAVE LONG-TERM MEMORY
+                # DISPLAY ANSWER
+                # ==================================================
+
+                st.markdown(answer)
+
+                # ==================================================
+                # SAVE MEMORY
                 # ==================================================
 
                 try:
@@ -4819,17 +4166,8 @@ MEMORY RULES:
 
                 except Exception:
 
+                    # Memory failure must NEVER break chat.
                     pass
-
-
-                # ==================================================
-                # DISPLAY AI ANSWER
-                # ==================================================
-
-                st.markdown(
-                    answer
-                )
-
 
                 # ==================================================
                 # TEXT TO SPEECH
@@ -4843,27 +4181,26 @@ MEMORY RULES:
                         )
                     )
 
+                    if clean_answer:
 
-                    tts = gTTS(
-                        text=clean_answer,
-                        lang=selected_lang
-                    )
+                        tts = gTTS(
+                            text=clean_answer,
+                            lang=selected_lang
+                        )
 
+                        tts.save(
+                            "chat_reply.mp3"
+                        )
 
-                    tts.save(
-                        "chat_reply.mp3"
-                    )
-
-
-                    st.audio(
-                        "chat_reply.mp3",
-                        format="audio/mp3"
-                    )
+                        st.audio(
+                            "chat_reply.mp3",
+                            format="audio/mp3"
+                        )
 
                 except Exception:
 
+                    # TTS failure must NEVER break chat.
                     pass
-
 
                 # ==================================================
                 # SAVE AI MESSAGE
@@ -4874,28 +4211,24 @@ MEMORY RULES:
                     "content": answer
                 })
 
-
             # ==================================================
-            # AI ERROR
+            # MAIN CHAT ERROR
             # ==================================================
 
             except Exception as e:
 
-                error_message = (
-                    f"❌ AI Error: {e}"
-                )
-
-
-                st.error(
-                    error_message
-                )
-
-
                 # IMPORTANT:
-                # This is INSIDE except.
-                # Therefore error_message always exists here.
+                # Do NOT use a separate error_message variable.
+                # This completely prevents the NameError.
+
+                error_text = (
+                    "❌ AI Chat Error\n\n"
+                    + str(e)
+                )
+
+                st.error(error_text)
 
                 st.session_state.messages.append({
                     "role": "assistant",
-                    "content": error_message
+                    "content": error_text
                 })
