@@ -2001,15 +2001,13 @@ TEXT:
                         f"Translation failed: {error}"
                     )
 
-    ## ======================================================
+# ======================================================
 # IMAGE GENERATION
 # ======================================================
 
 st.divider()
 
-st.subheader(
-    "🎨 Image Generation"
-)
+st.subheader("🎨 Image Generation")
 
 image_prompt = st.text_area(
     "Describe the image you want"
@@ -2059,31 +2057,29 @@ if st.button(
 
                 from huggingface_hub import InferenceClient
 
-client = InferenceClient(
-    provider="fal-ai",
-    api_key=hf_token
-)
+                client = InferenceClient(
+                    provider="fal-ai",
+                    api_key=hf_token
+                )
 
-generated = client.text_to_image(
-    image_prompt,
-    model="black-forest-labs/FLUX.1-schnell"
-)
+                generated = client.text_to_image(
+                    prompt=image_prompt,
+                    model="black-forest-labs/FLUX.1-schnell"
+                )
 
-st.session_state.generated_image = generated
+                st.session_state.generated_image = generated
 
-st.image(
-    generated,
-    caption="Generated Image",
-    use_container_width=True
-)
+                st.image(
+                    generated,
+                    caption="Generated Image",
+                    use_container_width=True
+                )
 
             except Exception as error:
 
                 st.error(
                     f"Image generation failed: {error}"
-                )
-
-    # ======================================================
+                )    # ======================================================
     # TEXT TO SPEECH
     # ======================================================
 
