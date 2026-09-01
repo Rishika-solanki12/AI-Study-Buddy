@@ -266,28 +266,35 @@ def response_to_text(response):
 # ==========================================================
 
 def remove_thinking(text):
-
     if not text:
         return ""
 
     text = str(text)
+
+    # Remove <think>...</think>
     text = re.sub(
-        r"<think>.*?</think>",
+        r"<think\b[^>]*>.*?</think>",
         "",
         text,
-        flags=re.DOTALL | re.IGNORECASE
+        flags=re.IGNORECASE | re.DOTALL
     )
 
+    # Remove unclosed <think>...</END>
     text = re.sub(
-        r"<analysis>.*?</analysis>",
+        r"<think\b[^>]*>.*$",
         "",
         text,
-        flags=re.DOTALL | re.IGNORECASE
+        flags=re.IGNORECASE | re.DOTALL
+    )
+
+    # Remove common thinking/reasoning sections
+    text = re.sub(
+        r"(?is)(here'?s a thinking process:|self-correction/refinement.*|self-correction/verification.*|output generation.*)$",
+        "",
+        text
     )
 
     return text.strip()
-
-
 # ==========================================================
 # SAFE LLM CALL
 # ==========================================================
@@ -4383,18 +4390,19 @@ IMPORTANT OUTPUT RULES:
 # FINAL ANSWER CLEANUP
 # ==================================================
 
-                    answer = response_to_text(response)
+answer = response_to_text(response)
 
-                    answer = remove_thinking(answer)
-                    answer = str(answer).strip()
+answer = remove_thinking(answer)
+answer = str(answer).strip()
 
-                    if not answer:
-                        raise RuntimeError(
-                            "AI returned an empty answer."
-                        )
-                # ==================================================
-                # DISPLAY ANSWER
-                # ==================================================
+if not answer:
+    raise RuntimeError(
+        "AI returned an empty answer."
+    )
+       
+# ==================================================
+# DISPLAY ANSWER
+# ==================================================
 
                 st.markdown(answer)
 
