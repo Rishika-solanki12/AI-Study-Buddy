@@ -1,0 +1,11 @@
+streamlit
+pandas
+pymupdf
+python-docx
+python-pptx
+scikit-learn
+groq
+gTTS
+huggingface_hub
+openpyxl
+xlrd
