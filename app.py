@@ -271,7 +271,6 @@ def remove_thinking(text):
         return ""
 
     text = str(text)
-
     text = re.sub(
         r"<think>.*?</think>",
         "",
@@ -4405,6 +4404,7 @@ MEMORY RULES:
                 # DISPLAY ANSWER
                 # ==================================================
 
+                answer = remove_thinking(response.content)
                 st.markdown(answer)
 
                 # ==================================================
