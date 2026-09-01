@@ -2474,23 +2474,6 @@ Never reveal:
                 )
 
 
-    # ==========================================================
-    # DISPLAY GENERATED DOCUMENT EXPLANATION
-    # ==========================================================
-
-    if st.session_state.get(
-        "document_explanation"
-    ):
-
-        st.markdown("---")
-
-        st.subheader(
-            "📚 Here is your document in text "
-        )
-
-        st.markdown(
-            st.session_state.document_explanation
-        )    
     
 # ==========================================================
 # CURRENT READER SOURCE
