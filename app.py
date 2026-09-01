@@ -1371,16 +1371,6 @@ st.sidebar.header(
     "📁 Upload Study Material"
 )
 
-# ==========================================================
-# SIDEBAR UPLOAD
-# ==========================================================
-
-st.sidebar.markdown("---")
-
-st.sidebar.header(
-    "📁 Upload Study Material"
-)
-
 
 uploaded_files = st.sidebar.file_uploader(
     "Upload Study Material",
