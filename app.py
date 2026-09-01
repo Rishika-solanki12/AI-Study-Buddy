@@ -15,7 +15,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from groq import Groq
 from gtts import gTTS
-from huggingface_hub import InferenceClient
 
 
 # ==========================================================
@@ -2060,23 +2059,23 @@ if st.button(
 
                 from huggingface_hub import InferenceClient
 
-                client = InferenceClient(
-                    provider="auto",
-                    api_key=hf_token
-                )
+client = InferenceClient(
+    provider="fal-ai",
+    api_key=hf_token
+)
 
-                generated = client.text_to_image(
-                    prompt=image_prompt,
-                    model="black-forest-labs/FLUX.1-schnell"
-                )
+generated = client.text_to_image(
+    image_prompt,
+    model="black-forest-labs/FLUX.1-schnell"
+)
 
-                st.session_state.generated_image = generated
+st.session_state.generated_image = generated
 
-                st.image(
-                    generated,
-                    caption="Generated Image",
-                    use_container_width=True
-                )
+st.image(
+    generated,
+    caption="Generated Image",
+    use_container_width=True
+)
 
             except Exception as error:
 
