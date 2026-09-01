@@ -4,3 +4,8 @@ chat_reply.mp3
 __pycache__/
 *.pyc
 .envgit 
+ai_study_buddy_memory.db
+chat_reply.mp3
+response.mp3
+faiss_index/
+data/
