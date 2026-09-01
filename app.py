@@ -4432,17 +4432,22 @@ st.sidebar.markdown("---")
 
 st.subheader("💬 Chat with your Study Buddy")
 
+
+# ==========================================================
+# INITIALIZE CHAT HISTORY
+# ==========================================================
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+
 # ==========================================================
 # DISPLAY CHAT HISTORY
 # ==========================================================
-# ALL OLD + NEW CHAT MESSAGES APPEAR HERE
-# ABOVE THE INPUT BOXES
 
 for message in st.session_state.messages:
 
-    with st.chat_message(
-        message["role"]
-    ):
+    with st.chat_message(message["role"]):
 
         st.markdown(
             remove_thinking(
@@ -4459,12 +4464,10 @@ st.write(
     "🎤 **Tap the microphone and ask your question:**"
 )
 
-
 audio = st.audio_input(
     "Start Recording",
     key="my_voice_mic"
 )
-
 
 voice_input = None
 
@@ -4477,29 +4480,23 @@ if audio is not None:
 
     audio_bytes = audio.getvalue()
 
-    current_audio_id = hash(
-        audio_bytes
-    )
-
-
-    # ------------------------------------------------------
-    # ONLY PROCESS NEW RECORDING
-    # ------------------------------------------------------
+    current_audio_id = hash(audio_bytes)
 
     if (
         current_audio_id
-        != st.session_state.last_audio_id
+        != st.session_state.get(
+            "last_audio_id",
+            None
+        )
     ):
 
         st.session_state.last_audio_id = (
             current_audio_id
         )
 
-
         st.info(
             "🔄 Your voice is being processed..."
         )
-
 
         try:
 
@@ -4508,7 +4505,6 @@ if audio is not None:
                     "GROQ_API_KEY"
                 ]
             )
-
 
             transcription = (
                 client.audio.transcriptions.create(
@@ -4521,11 +4517,9 @@ if audio is not None:
                 )
             )
 
-
             voice_input = str(
                 transcription
             ).strip()
-
 
             if voice_input:
 
@@ -4541,7 +4535,6 @@ if audio is not None:
                 )
 
                 voice_input = None
-
 
         except Exception as e:
 
@@ -4565,10 +4558,7 @@ text_input = st.chat_input(
 # FINAL PROMPT
 # ==========================================================
 
-prompt = (
-    text_input
-    or voice_input
-)
+prompt = text_input or voice_input
 
 
 # ==========================================================
@@ -4591,26 +4581,18 @@ if prompt:
     # DISPLAY USER MESSAGE
     # ------------------------------------------------------
 
-    with st.chat_message(
-        "user"
-    ):
+    with st.chat_message("user"):
 
-        st.markdown(
-            prompt
-        )
+        st.markdown(prompt)
 
 
     # ------------------------------------------------------
     # AI RESPONSE
     # ------------------------------------------------------
 
-    with st.chat_message(
-        "assistant"
-    ):
+    with st.chat_message("assistant"):
 
-        with st.spinner(
-            "Thinking..."
-        ):
+        with st.spinner("Thinking..."):
 
             try:
 
@@ -4641,12 +4623,10 @@ if prompt:
                         )
                     )
 
-
                     context = "\n\n".join(
                         doc.page_content
                         for doc in docs
                     )
-
 
                     custom_prompt = f"""
 You are a highly intelligent AI Study Buddy
@@ -4678,8 +4658,7 @@ USER QUESTION:
 
 INSTRUCTIONS:
 
-1. Use the uploaded study material as the
-   primary source.
+1. Use the uploaded study material as the primary source.
 
 2. You may add useful general knowledge
    when it helps explain the topic.
@@ -4704,7 +4683,6 @@ INSTRUCTIONS:
 
 ANSWER:
 """
-
 
                     answer = ask_llm(
                         custom_prompt
@@ -4757,7 +4735,6 @@ MEMORY RULES:
 
                     ])
 
-
                     answer = response.content
 
 
@@ -4790,9 +4767,7 @@ MEMORY RULES:
                 # DISPLAY AI ANSWER
                 # ==================================================
 
-                st.markdown(
-                    answer
-                )
+                st.markdown(answer)
 
 
                 # ==================================================
@@ -4807,17 +4782,14 @@ MEMORY RULES:
                         )
                     )
 
-
                     tts = gTTS(
                         text=clean_answer,
                         lang=selected_lang
                     )
 
-
                     tts.save(
                         "chat_reply.mp3"
                     )
-
 
                     st.audio(
                         "chat_reply.mp3",
@@ -4849,13 +4821,12 @@ MEMORY RULES:
                     f"❌ AI Error: {e}"
                 )
 
-
                 st.error(
                     error_message
                 )
 
-
-                # IMPORTANT:
-                # This is INSIDE except.
-                # Therefore error_message always exists here.
-
+                # Save error safely inside except
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": error_message
+                })
