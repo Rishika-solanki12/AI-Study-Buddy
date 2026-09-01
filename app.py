@@ -283,7 +283,6 @@ def text_ai(
 def web_ai(prompt):
 
     response = groq_client().chat.completions.create(
-
         model="groq/compound",
 
         messages=[
@@ -294,77 +293,47 @@ def web_ai(prompt):
         ],
 
         temperature=0.2,
-
-        max_completion_tokens=4096,
-
-        compound_custom={
-            "tools": {
-                "enabled_tools": [
-                    "web_search",
-                    "visit_website"
-                ]
-            }
-        }
+        max_completion_tokens=4096
     )
 
     message = response.choices[0].message
 
     answer = (
-        message.content
-        or ""
+        message.content or ""
     ).strip()
 
     sources = []
 
     try:
-
         executed_tools = (
-            getattr(
-                message,
-                "executed_tools",
-                None
-            )
+            getattr(message, "executed_tools", None)
             or []
         )
 
         for tool in executed_tools:
 
             search_results = (
-                getattr(
-                    tool,
-                    "search_results",
-                    None
-                )
+                getattr(tool, "search_results", None)
                 or []
             )
 
             for item in search_results:
 
-                if (
-                    isinstance(item, dict)
-                    and item.get("url")
-                ):
+                if isinstance(item, dict) and item.get("url"):
 
                     sources.append({
-
-                        "title":
-                        item.get(
+                        "title": item.get(
                             "title",
                             "Source"
                         ),
-
-                        "url":
-                        item["url"]
-
+                        "url": item["url"]
                     })
 
     except Exception:
         pass
 
     return answer, sources
-
-
-# ==========================================================
+    # ==========================================================
 # IMAGE UNDERSTANDING + OCR
 # ==========================================================
 
