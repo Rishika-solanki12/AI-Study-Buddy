@@ -2485,7 +2485,7 @@ Never reveal:
         st.markdown("---")
 
         st.subheader(
-            "📚 Document Explanation"
+            "📚 Here is your document in text "
         )
 
         st.markdown(
