@@ -39,9 +39,6 @@ if "HF_TOKEN" in st.secrets:
 
 
 # ==========================================================
-# baaki tumhara code
-# ==========================================================
-# ==========================================================
 # PAGE CONFIG
 # ==========================================================
 
@@ -55,6 +52,21 @@ st.set_option(
     "client.toolbarMode",
     "viewer"
 )
+
+
+st.set_option(
+    "client.toolbarMode",
+    "viewer"
+)
+
+st.markdown("""
+<style>
+button[data-baseweb="tab"] {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 # ==========================================================
