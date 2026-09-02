@@ -1888,8 +1888,8 @@ TEXT:
 # ==========================================================
 # DOCUMENT STUDY TOOLS
 # ==========================================================
-
-if st.session_state.vector_store is not None:
+with files_tab:
+    if st.session_state.vector_store is not None:
 
     st.sidebar.markdown("---")
 
