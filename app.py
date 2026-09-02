@@ -5267,6 +5267,66 @@ The user must see only the final answer.
                 })
 
 
+                                # ==================================================
+                # DISPLAY REAL IMAGES IMMEDIATELY
+                # ==================================================
+
+                if real_image_results:
+
+                    st.markdown(
+                        "### 🖼️ Related Real Images"
+                    )
+
+                    columns = st.columns(2)
+
+                    for i, image_data in enumerate(
+                        real_image_results
+                    ):
+
+                        with columns[i % 2]:
+
+                            try:
+
+                                image_bytes = image_data.get(
+                                    "image"
+                                )
+
+                                if image_bytes:
+
+                                    st.image(
+                                        image_bytes,
+                                        use_container_width=True
+                                    )
+
+                                title = image_data.get(
+                                    "title",
+                                    "Related Image"
+                                )
+
+                                if title:
+
+                                    st.caption(
+                                        title
+                                    )
+
+                                source_url = image_data.get(
+                                    "source",
+                                    ""
+                                )
+
+                                if source_url:
+
+                                    st.markdown(
+                                        f"[🔗 Open original source]({source_url})"
+                                    )
+
+                            except Exception as image_error:
+
+                                print(
+                                    "Image display error:",
+                                    image_error
+                                )
+
             # ==================================================
             # MAIN CHAT ERROR
             # ==================================================
