@@ -2367,6 +2367,34 @@ if st.session_state.get(
 
 
 # ==========================================================
+# CURRENT READER SOURCE
+# ==========================================================
+
+reader_source_text = None
+reader_source_type = None
+
+if st.session_state.get(
+    "document_explanation"
+):
+
+    reader_source_text = (
+        st.session_state.document_explanation
+    )
+
+    reader_source_type = "Document"
+
+elif st.session_state.get(
+    "image_explanation"
+):
+
+    reader_source_text = (
+        st.session_state.image_explanation
+    )
+
+    reader_source_type = "Image"
+
+
+# ==========================================================
 # COMMON SMART READER
 # ==========================================================
 
