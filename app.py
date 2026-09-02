@@ -4937,7 +4937,12 @@ The user must see only the final answer.
                     )
 
                 except Exception as model_error:
- 
+
+                    answer = (
+                        f"⚠️ Model error: {model_error}"
+                    )
+
+
                 # ==================================================
                 # REAL IMAGE SEARCH
                 # ==================================================
@@ -4959,7 +4964,7 @@ The user must see only the final answer.
                         real_image_results = search_real_images(
                             prompt,
                             max_results=4
-                        )                  
+                        )              
 
                    # ==================================================
                     # HUGGING FACE FALLBACK
