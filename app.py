@@ -1,4 +1,4 @@
-
+ui or feature replace   ke phle
 
 import os
 import re
@@ -1176,6 +1176,77 @@ st.write(
 
 
 # ==========================================================
+# IMAGE GENERATION
+# ==========================================================
+
+st.sidebar.markdown("---")
+
+st.sidebar.header(
+    "🎨 Image Generation"
+)
+
+st.sidebar.caption(
+    "Create an educational image using AI"
+)
+
+image_generation_prompt = st.sidebar.text_area(
+    "📝 Describe the image you want:",
+    placeholder=(
+        "Example: Draw a simple labeled diagram "
+        "of the human heart for a school student."
+    ),
+    height=100,
+    key="image_generation_prompt"
+)
+
+generate_image_button = st.sidebar.button(
+    "🎨 Generate Image",
+    use_container_width=True,
+    key="generate_image_button"
+)
+
+
+def get_hf_token():
+
+    try:
+
+        token = st.secrets.get(
+            "HF_TOKEN",
+            ""
+        )
+
+    except Exception:
+
+        token = ""
+
+    if not token:
+
+        raise RuntimeError(
+            "HF_TOKEN is missing. "
+            "Please add HF_TOKEN to Streamlit Secrets."
+        )
+
+    return str(token).strip()
+
+
+def generate_ai_image(prompt):
+
+    token = get_hf_token()
+
+    client = InferenceClient(
+        provider="auto",
+        api_key=token,
+        timeout=120
+    )
+
+    image = client.text_to_image(
+        prompt=prompt,
+        model="black-forest-labs/FLUX.1-schnell"
+    )
+
+    return image
+
+# ==========================================================
 # REAL IMAGE SEARCH FUNCTION
 # ==========================================================
 
@@ -1286,27 +1357,56 @@ def should_search_images(prompt):
     prompt_lower = prompt.lower()
 
     image_keywords = [
-        # tumhari existing complete list
+
+        "image",
+        "images",
+        "photo",
+        "picture",
+        "pic",
+        "show me",
+        "dikhao",
+        "tasveer",
+        "चित्र",
+        "फोटो",
+        "इमेज",
+
+        "diagram",
+        "diagram of",
+        "labeled diagram",
+
+        "map",
+        "location",
+
+        "what does it look like",
+        "looks like",
+        "kaisa dikhta",
+        "kaisi dikhti",
+
+        "human heart",
+        "heart anatomy",
+        "brain",
+        "human brain",
+        "cell",
+        "plant cell",
+        "animal cell",
+        "solar system",
+        "planet",
+        "earth",
+        "moon",
+        "atom",
+        "molecule",
+        "dna",
+        "skeleton",
+        "human body",
+        "digestive system",
+        "respiratory system",
+        "photosynthesis"
     ]
 
     return any(
         keyword in prompt_lower
         for keyword in image_keywords
     )
-
-
-# IMAGE GENERATION INPUT + BUTTON
-image_generation_prompt = st.sidebar.text_area(
-    "🖼️ Describe the image you want",
-    placeholder="e.g. Human heart labeled diagram",
-    key="image_generation_prompt"
-)
-
-generate_image_button = st.sidebar.button(
-    "🎨 Generate Image",
-    use_container_width=True
-)
-
 
 if generate_image_button:
 
@@ -1362,6 +1462,8 @@ if generate_image_button:
                     st.sidebar.error(
                         f"❌ Image generation failed: {e}"
                     )
+
+
 # ==========================================================
 # DISPLAY GENERATED IMAGE
 # ==========================================================
