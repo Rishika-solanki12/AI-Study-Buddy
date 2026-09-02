@@ -61,14 +61,12 @@ st.set_option(
 
 st.markdown("""
 <style>
-button[data-baseweb="tab"] {
-    font-size: 20px !important;
+[data-baseweb="tab"] > div {
+    font-size: 22px !important;
     font-weight: 700 !important;
 }
 </style>
 """, unsafe_allow_html=True)
-
-
 # ==========================================================
 # CSS
 # ==========================================================
