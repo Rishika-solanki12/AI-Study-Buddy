@@ -1286,56 +1286,27 @@ def should_search_images(prompt):
     prompt_lower = prompt.lower()
 
     image_keywords = [
-
-        "image",
-        "images",
-        "photo",
-        "picture",
-        "pic",
-        "show me",
-        "dikhao",
-        "tasveer",
-        "चित्र",
-        "फोटो",
-        "इमेज",
-
-        "diagram",
-        "diagram of",
-        "labeled diagram",
-
-        "map",
-        "location",
-
-        "what does it look like",
-        "looks like",
-        "kaisa dikhta",
-        "kaisi dikhti",
-
-        "human heart",
-        "heart anatomy",
-        "brain",
-        "human brain",
-        "cell",
-        "plant cell",
-        "animal cell",
-        "solar system",
-        "planet",
-        "earth",
-        "moon",
-        "atom",
-        "molecule",
-        "dna",
-        "skeleton",
-        "human body",
-        "digestive system",
-        "respiratory system",
-        "photosynthesis"
+        # tumhari existing complete list
     ]
 
     return any(
         keyword in prompt_lower
         for keyword in image_keywords
     )
+
+
+# IMAGE GENERATION INPUT + BUTTON
+image_generation_prompt = st.sidebar.text_area(
+    "🖼️ Describe the image you want",
+    placeholder="e.g. Human heart labeled diagram",
+    key="image_generation_prompt"
+)
+
+generate_image_button = st.sidebar.button(
+    "🎨 Generate Image",
+    use_container_width=True
+)
+
 
 if generate_image_button:
 
@@ -1391,8 +1362,6 @@ if generate_image_button:
                     st.sidebar.error(
                         f"❌ Image generation failed: {e}"
                     )
-
-
 # ==========================================================
 # DISPLAY GENERATED IMAGE
 # ==========================================================
