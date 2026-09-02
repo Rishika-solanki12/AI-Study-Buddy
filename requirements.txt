@@ -13,3 +13,4 @@ langchain-groq
 ddgs
 langchain-community
 pypdf
+sentence-transformers
