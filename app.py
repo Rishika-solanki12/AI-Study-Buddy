@@ -5196,146 +5196,93 @@ The user must see only the final answer.
                             prompt,
                             max_results=4
                         )
-
-
                 # ==================================================
-                # FINAL ANSWER CLEANUP
-                # ==================================================
-
-                answer = response_to_text(
-                    answer
-                )
-
-                answer = remove_thinking(
-                    answer
-                )
-
-                answer = str(
-                    answer
-                ).strip()
-
-                if not answer:
-
-                    raise RuntimeError(
-                        "AI returned an empty answer."
-                    )
-
-
-                # ==================================================
-                # DISPLAY FINAL ANSWER
-                # ==================================================
-
-                st.markdown(
-                    answer
-                )
-
-
-                # ==================================================
-                # SAVE MEMORY
+                # TEXT TO SPEECH
                 # ==================================================
 
                 try:
 
-                    extract_and_save_memories(
-                        prompt,
-                        answer
+                    clean_answer = (
+                        clean_text_for_speech(
+                            answer
+                        )
                     )
+
+                    if clean_answer:
+
+                        tts = gTTS(
+                            text=clean_answer,
+                            lang=selected_lang
+                        )
+
+                        tts.save(
+                            "chat_reply.mp3"
+                        )
+
+                        st.audio(
+                            "chat_reply.mp3",
+                            format="audio/mp3"
+                        )
 
                 except Exception:
 
-                    # Memory failure must NEVER
+                    # TTS failure must NEVER
                     # break the chat.
 
                     pass
 
 
-# ==================================================
-# TEXT TO SPEECH
-# ==================================================
+                # ==================================================
+                # REAL IMAGE SEARCH
+                # ==================================================
 
-try:
+                real_image_results = []
 
-    clean_answer = (
-        clean_text_for_speech(
-            answer
-        )
-    )
+                if (
+                    st.session_state.get(
+                        "real_image_search_enabled",
+                        True
+                    )
+                    and should_search_images(prompt)
+                ):
 
-    if clean_answer:
+                    with st.spinner(
+                        "🌐 Finding real images..."
+                    ):
 
-        tts = gTTS(
-            text=clean_answer,
-            lang=selected_lang
-        )
-
-        tts.save(
-            "chat_reply.mp3"
-        )
-
-        st.audio(
-            "chat_reply.mp3",
-            format="audio/mp3"
-        )
-
-except Exception:
-
-    # TTS failure must NEVER
-    # break the chat.
-
-    pass
+                        real_image_results = search_real_images(
+                            prompt,
+                            max_results=4
+                        )
 
 
-# ==================================================
-# REAL IMAGE SEARCH
-# ==================================================
+                # ==================================================
+                # SAVE AI MESSAGE
+                # ==================================================
 
-real_image_results = []
-
-if (
-    st.session_state.get(
-        "real_image_search_enabled",
-        True
-    )
-    and should_search_images(prompt)
-):
-
-    with st.spinner(
-        "🌐 Finding real images..."
-    ):
-
-        real_image_results = search_real_images(
-            prompt,
-            max_results=4
-        )
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": answer,
+                    "images": real_image_results
+                })
 
 
-# ==================================================
-# SAVE AI MESSAGE
-# ==================================================
+            # ==================================================
+            # MAIN CHAT ERROR
+            # ==================================================
 
-st.session_state.messages.append({
-    "role": "assistant",
-    "content": answer,
-    "images": real_image_results
-})
+            except Exception as e:
 
+                error_text = (
+                    "❌ AI Chat Error\n\n"
+                    + str(e)
+                )
 
-# ==================================================
-# MAIN CHAT ERROR
-# ==================================================
+                st.error(
+                    error_text
+                )
 
-except Exception as e:
-
-    error_text = (
-        "❌ AI Chat Error\n\n"
-        + str(e)
-    )
-
-    st.error(
-        error_text
-    )
-
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": error_text
-    })
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": error_text
+                })
