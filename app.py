@@ -1888,10 +1888,10 @@ TEXT:
 # ==========================================================
 # DOCUMENT STUDY TOOLS
 # ==========================================================
-with files_tab:
-    if st.session_state.vector_store is not None:
 
-       st.sidebar.markdown("---")
+if st.session_state.vector_store is not None:
+
+    st.sidebar.markdown("---")
 
     st.sidebar.subheader(
         "🎓 Document Study Tools"
@@ -1979,7 +1979,6 @@ in the uploaded study material.
     else:
 
         exam_instruction = ""
-
 
     # ======================================================
     # EXPLAIN DOCUMENT BUTTON
@@ -2290,17 +2289,7 @@ Never reveal:
 
                 st.error(
                     f"❌ Document explanation error: {e}"
-                )
-
-
-    
-with files_tab:
-
-    if st.session_state.vector_store is not None:
-        # Document Study Tools ka existing code
-
-
-    # ==========================================================
+                )    # ==========================================================
     # CURRENT READER SOURCE
     # ==========================================================
 
