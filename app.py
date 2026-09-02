@@ -1176,77 +1176,6 @@ st.write(
 
 
 # ==========================================================
-# IMAGE GENERATION
-# ==========================================================
-
-st.sidebar.markdown("---")
-
-st.sidebar.header(
-    "🎨 Image Generation"
-)
-
-st.sidebar.caption(
-    "Create an educational image using AI"
-)
-
-image_generation_prompt = st.sidebar.text_area(
-    "📝 Describe the image you want:",
-    placeholder=(
-        "Example: Draw a simple labeled diagram "
-        "of the human heart for a school student."
-    ),
-    height=100,
-    key="image_generation_prompt"
-)
-
-generate_image_button = st.sidebar.button(
-    "🎨 Generate Image",
-    use_container_width=True,
-    key="generate_image_button"
-)
-
-
-def get_hf_token():
-
-    try:
-
-        token = st.secrets.get(
-            "HF_TOKEN",
-            ""
-        )
-
-    except Exception:
-
-        token = ""
-
-    if not token:
-
-        raise RuntimeError(
-            "HF_TOKEN is missing. "
-            "Please add HF_TOKEN to Streamlit Secrets."
-        )
-
-    return str(token).strip()
-
-
-def generate_ai_image(prompt):
-
-    token = get_hf_token()
-
-    client = InferenceClient(
-        provider="auto",
-        api_key=token,
-        timeout=120
-    )
-
-    image = client.text_to_image(
-        prompt=prompt,
-        model="black-forest-labs/FLUX.1-schnell"
-    )
-
-    return image
-
-# ==========================================================
 # REAL IMAGE SEARCH FUNCTION
 # ==========================================================
 
@@ -2210,6 +2139,80 @@ TEXT:
                     st.sidebar.error(
                         f"❌ Error analyzing image: {e}"
                     )
+
+# ==========================================================
+# IMAGE GENERATION
+# ==========================================================
+
+st.sidebar.markdown("---")
+
+st.sidebar.header(
+    "🎨 Image Generation"
+)
+
+st.sidebar.caption(
+    "Create an educational image using AI"
+)
+
+image_generation_prompt = st.sidebar.text_area(
+    "📝 Describe the image you want:",
+    placeholder=(
+        "Example: Draw a simple labeled diagram "
+        "of the human heart for a school student."
+    ),
+    height=100,
+    key="image_generation_prompt"
+)
+
+generate_image_button = st.sidebar.button(
+    "🎨 Generate Image",
+    use_container_width=True,
+    key="generate_image_button"
+)
+
+
+def get_hf_token():
+
+    try:
+
+        token = st.secrets.get(
+            "HF_TOKEN",
+            ""
+        )
+
+    except Exception:
+
+        token = ""
+
+    if not token:
+
+        raise RuntimeError(
+            "HF_TOKEN is missing. "
+            "Please add HF_TOKEN to Streamlit Secrets."
+        )
+
+    return str(token).strip()
+
+
+def generate_ai_image(prompt):
+
+    token = get_hf_token()
+
+    client = InferenceClient(
+        provider="auto",
+        api_key=token,
+        timeout=120
+    )
+
+    image = client.text_to_image(
+        prompt=prompt,
+        model="black-forest-labs/FLUX.1-schnell"
+    )
+
+    return image
+
+
+
 
 
 # ==========================================================
