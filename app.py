@@ -5249,40 +5249,40 @@ The user must see only the final answer.
                     pass
 
 
-                # ==================================================
-                # TEXT TO SPEECH
-                # ==================================================
+# ==================================================
+# TEXT TO SPEECH
+# ==================================================
 
-                try:
+try:
 
-                    clean_answer = (
-                        clean_text_for_speech(
-                            answer
-                        )
-                    )
+    clean_answer = (
+        clean_text_for_speech(
+            answer
+        )
+    )
 
-                    if clean_answer:
+    if clean_answer:
 
-                        tts = gTTS(
-                            text=clean_answer,
-                            lang=selected_lang
-                        )
+        tts = gTTS(
+            text=clean_answer,
+            lang=selected_lang
+        )
 
-                        tts.save(
-                            "chat_reply.mp3"
-                        )
+        tts.save(
+            "chat_reply.mp3"
+        )
 
-                        st.audio(
-                            "chat_reply.mp3",
-                            format="audio/mp3"
-                        )
+        st.audio(
+            "chat_reply.mp3",
+            format="audio/mp3"
+        )
 
-                except Exception:
+except Exception:
 
-                    # TTS failure must NEVER
-                    # break the chat.
+    # TTS failure must NEVER
+    # break the chat.
 
-                    pass
+    pass
 
 
 # ==================================================
@@ -5317,22 +5317,25 @@ st.session_state.messages.append({
     "role": "assistant",
     "content": answer,
     "images": real_image_results
-})            # ==================================================
-            # MAIN CHAT ERROR
-            # ==================================================
+})
 
-            except Exception as e:
 
-                error_text = (
-                    "❌ AI Chat Error\n\n"
-                    + str(e)
-                )
+# ==================================================
+# MAIN CHAT ERROR
+# ==================================================
 
-                st.error(
-                    error_text
-                )
+except Exception as e:
 
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": error_text
-                })
+    error_text = (
+        "❌ AI Chat Error\n\n"
+        + str(e)
+    )
+
+    st.error(
+        error_text
+    )
+
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": error_text
+    })
