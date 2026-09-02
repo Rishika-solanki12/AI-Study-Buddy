@@ -126,6 +126,7 @@ DEFAULT_STATE = {
 
     "generated_ai_image": None,
     "generated_ai_image_prompt": None,
+    "real_image_search_enabled": True,
 
     "memory_user_id": None,
     "memory_loaded": False,
@@ -1199,6 +1200,28 @@ st.write(
 )
 
 
+# ==========================================================
+# REAL IMAGE SEARCH
+# ==========================================================
+
+st.sidebar.markdown("---")
+
+st.sidebar.header("🌐 Real Image Search")
+
+real_image_search_enabled = st.sidebar.checkbox(
+    "🖼️ Show real images from web",
+    value=st.session_state.get(
+        "real_image_search_enabled",
+        True
+    ),
+    key="real_image_search_enabled"
+)
+
+st.sidebar.caption(
+    "When useful, Study Buddy will show real images "
+    "from the web along with the answer."
+)
+
 
 # ==========================================================
 # IMAGE GENERATION
@@ -1271,6 +1294,112 @@ def generate_ai_image(prompt):
 
     return image
 
+# ==========================================================
+# REAL IMAGE SEARCH FUNCTION
+# ==========================================================
+
+def search_real_images(query, max_results=4):
+
+    try:
+
+        results = []
+
+        with DDGS() as ddgs:
+
+            image_results = ddgs.images(
+                query,
+                max_results=max_results
+            )
+
+            for item in image_results:
+
+                image_url = (
+                    item.get("image")
+                    or item.get("thumbnail")
+                )
+
+                source_url = (
+                    item.get("url")
+                    or item.get("source")
+                    or ""
+                )
+
+                title = item.get(
+                    "title",
+                    "Related Image"
+                )
+
+                if image_url:
+
+                    results.append({
+                        "image": image_url,
+                        "source": source_url,
+                        "title": title
+                    })
+
+        return results
+
+    except Exception:
+        return []
+        # ==========================================================
+# IMAGE SEARCH DECISION
+# ==========================================================
+
+def should_search_images(prompt):
+
+    prompt_lower = prompt.lower()
+
+    image_keywords = [
+
+        "image",
+        "images",
+        "photo",
+        "picture",
+        "pic",
+        "show me",
+        "dikhao",
+        "tasveer",
+        "चित्र",
+        "फोटो",
+        "इमेज",
+
+        "diagram",
+        "diagram of",
+        "labeled diagram",
+
+        "map",
+        "location",
+
+        "what does it look like",
+        "looks like",
+        "kaisa dikhta",
+        "kaisi dikhti",
+
+        "human heart",
+        "heart anatomy",
+        "brain",
+        "human brain",
+        "cell",
+        "plant cell",
+        "animal cell",
+        "solar system",
+        "planet",
+        "earth",
+        "moon",
+        "atom",
+        "molecule",
+        "dna",
+        "skeleton",
+        "human body",
+        "digestive system",
+        "respiratory system",
+        "photosynthesis"
+    ]
+
+    return any(
+        keyword in prompt_lower
+        for keyword in image_keywords
+    )
 
 if generate_image_button:
 
@@ -4249,13 +4378,70 @@ for message in st.session_state.messages:
         st.markdown(
             remove_thinking(
                 str(
-                    message["content"]
+                    message.get("content", "")
                 )
             )
         )
 
+        # ==================================================
+        # REAL IMAGES
+        # ==================================================
 
-# ==========================================================
+        images = message.get(
+            "images",
+            []
+        )
+
+        if images:
+
+            st.markdown(
+                "### 🖼️ Related Real Images"
+            )
+
+            columns = st.columns(2)
+
+            for i, image_data in enumerate(images):
+
+                with columns[i % 2]:
+
+                    try:
+
+                        image_url = image_data.get(
+                            "image"
+                        )
+
+                        title = image_data.get(
+                            "title",
+                            "Related Image"
+                        )
+
+                        source_url = image_data.get(
+                            "source",
+                            ""
+                        )
+
+                        if image_url:
+
+                            st.image(
+                                image_url,
+                                use_container_width=True
+                            )
+
+                        if title:
+
+                            st.caption(
+                                title
+                            )
+
+                        if source_url:
+
+                            st.markdown(
+                                f"[🔗 View original source]({source_url})"
+                            )
+
+                    except Exception:
+
+                        pass# ==========================================================
 # COMBINED MOBILE-FRIENDLY INPUT
 # ==========================================================
 
@@ -4751,8 +4937,31 @@ The user must see only the final answer.
                     )
 
                 except Exception as model_error:
+ 
+                # ==================================================
+                # REAL IMAGE SEARCH
+                # ==================================================
 
-                    # ==================================================
+                real_image_results = []
+
+                if (
+                    st.session_state.get(
+                        "real_image_search_enabled",
+                        True
+                    )
+                    and should_search_images(prompt)
+                ):
+
+                    with st.spinner(
+                        "🌐 Finding real images..."
+                    ):
+
+                        real_image_results = search_real_images(
+                            prompt,
+                            max_results=4
+                        )                  
+
+                   # ==================================================
                     # HUGGING FACE FALLBACK
                     # ==================================================
 
@@ -4902,9 +5111,9 @@ The user must see only the final answer.
 
                 st.session_state.messages.append({
                     "role": "assistant",
-                    "content": answer
+                    "content": answer,
+                    "images": real_image_results
                 })
-
             # ==================================================
             # MAIN CHAT ERROR
             # ==================================================
