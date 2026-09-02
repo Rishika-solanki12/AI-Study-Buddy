@@ -1891,7 +1891,7 @@ TEXT:
 with files_tab:
     if st.session_state.vector_store is not None:
 
-    st.sidebar.markdown("---")
+       st.sidebar.markdown("---")
 
     st.sidebar.subheader(
         "🎓 Document Study Tools"
