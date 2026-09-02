@@ -4422,171 +4422,40 @@ else:
 
 
 # ==========================================================
-# MAIN CHAT
 # ==========================================================
+# MAIN CHAT — FIXED
+# ==========================================================
+#
+# The previous version had:
+# - chat history rendered BEFORE current-input processing
+# - the LLM called multiple times
+# - real-image search called multiple times
+# - the current response rendered temporarily instead of being
+#   rendered from session_state after a rerun
+#
+# This version:
+# 1. gets the new question,
+# 2. generates the answer exactly once,
+# 3. searches real images at most once,
+# 4. saves the complete assistant message,
+# 5. reruns,
+# 6. renders the complete chat from session_state.
+#
+# Result: normal text/search answers, real images, and voice
+# playback stay attached to the main chat conversation.
 
 st.sidebar.markdown("---")
 
-st.subheader(
-    "💬 Chat with your Study Buddy"
-)
+st.subheader("💬 Chat with your Study Buddy")
 
 
 # ==========================================================
-# DISPLAY CHAT HISTORY
-# ==========================================================
-
-for message in st.session_state.messages:
-
-    with st.chat_message(
-        message["role"]
-    ):
-
-        # ==================================================
-        # MESSAGE TEXT
-        # ==================================================
-
-        st.markdown(
-            remove_thinking(
-                str(
-                    message.get(
-                        "content",
-                        ""
-                    )
-                )
-            )
-        )
-
-        # ==================================================
-        # REAL IMAGES
-        # ==================================================
-
-        images = message.get(
-            "images",
-            []
-        )
-
-        if images:
-
-            st.markdown(
-                "### 🖼️ Related Real Images"
-            )
-
-            columns = st.columns(2)
-
-            for i, image_data in enumerate(images):
-
-                with columns[i % 2]:
-
-                    try:
-
-                        image_bytes = image_data.get(
-                            "image"
-                        )
-
-                        if image_bytes:
-
-                            st.image(
-                                image_bytes,
-                                use_container_width=True
-                            )
-
-                        title = image_data.get(
-                            "title",
-                            "Related Image"
-                        )
-
-                        if title:
-
-                            st.caption(
-                                title
-                            )
-
-                        source_url = image_data.get(
-                            "source",
-                            ""
-                        )
-
-                        if source_url:
-
-                            st.markdown(
-                                f"[🔗 Open original source]({source_url})"
-                            )
-
-                    except Exception as e:
-
-                        print(
-                            "Image display error:",
-                            e
-                        )      
-        # ==================================================
-        # REAL IMAGES
-        # ==================================================
-
-        images = message.get(
-            "images",
-            []
-        )
-
-        if images:
-
-            st.markdown(
-                "### 🖼️ Related Real Images"
-            )
-
-            columns = st.columns(2)
-
-            for i, image_data in enumerate(images):
-
-                with columns[i % 2]:
-
-                    try:
-
-                        image_url = image_data.get(
-                            "image"
-                        )
-
-                        title = image_data.get(
-                            "title",
-                            "Related Image"
-                        )
-
-                        source_url = image_data.get(
-                            "source",
-                            ""
-                        )
-
-                        if image_url:
-
-                            st.image(
-                                image_url,
-                                use_container_width=True
-                            )
-
-                        if title:
-
-                            st.caption(
-                                title
-                            )
-
-                        if source_url:
-
-                            st.markdown(
-                                f"[🔗 View original source]({source_url})"
-                            )
-
-                    except Exception:
-
-                        pass
-# ==========================================================
-# COMBINED MOBILE-FRIENDLY INPUT
+# COMBINED INPUT
 # ==========================================================
 
 st.markdown(
     """
     <style>
-
-    /* Main combined input area */
     .combined-input-wrapper {
         width: 100%;
         border: 1px solid #d1d5db;
@@ -4598,7 +4467,6 @@ st.markdown(
         margin-bottom: 15px;
     }
 
-    /* Audio input styling */
     div[data-testid="stAudioInput"] {
         margin-bottom: 0 !important;
     }
@@ -4607,9 +4475,7 @@ st.markdown(
         border-radius: 12px !important;
     }
 
-    /* Mobile */
     @media (max-width: 768px) {
-
         .combined-input-wrapper {
             border-radius: 14px;
             padding: 6px;
@@ -4622,33 +4488,20 @@ st.markdown(
         div[data-testid="stChatInput"] {
             margin-bottom: 5px !important;
         }
-
     }
 
-    /* Very small phones */
     @media (max-width: 480px) {
-
         .combined-input-wrapper {
             padding: 5px;
             border-radius: 12px;
         }
-
     }
-
     </style>
     """,
     unsafe_allow_html=True
 )
 
-
-st.write(
-    "🎤 **Ask your Study Buddy by voice or text:**"
-)
-
-
-# ==========================================================
-# COMBINED INPUT CONTAINER
-# ==========================================================
+st.write("🎤 **Ask your Study Buddy by voice or text:**")
 
 input_container = st.container()
 
@@ -4659,31 +4512,19 @@ with input_container:
         unsafe_allow_html=True
     )
 
-    # ------------------------------------------------------
-    # INPUT COLUMNS
-    # ------------------------------------------------------
-
     input_col1, input_col2 = st.columns(
         [1.2, 8.8],
         gap="small"
     )
 
-    # ------------------------------------------------------
-    # MICROPHONE
-    # ------------------------------------------------------
-with input_col1:
-
-    audio = st.audio_input(
-        "",
-        key="my_voice_mic",
-        label_visibility="collapsed"
-    )
-    # ------------------------------------------------------
-    # TEXT INPUT
-    # ------------------------------------------------------
+    with input_col1:
+        audio = st.audio_input(
+            "",
+            key="my_voice_mic",
+            label_visibility="collapsed"
+        )
 
     with input_col2:
-
         text_input = st.chat_input(
             "Ask your question..."
         )
@@ -4695,30 +4536,22 @@ with input_col1:
 
 
 # ==========================================================
-# VOICE INPUT PROCESSING
+# VOICE INPUT
 # ==========================================================
 
 voice_input = None
-
 
 if audio is not None:
 
     audio_bytes = audio.getvalue()
 
-    current_audio_id = hash(
-        audio_bytes
-    )
+    current_audio_id = hash(audio_bytes)
 
-    if (
-        current_audio_id
-        != st.session_state.get(
-            "last_audio_id"
-        )
+    if current_audio_id != st.session_state.get(
+        "last_audio_id"
     ):
 
-        st.session_state.last_audio_id = (
-            current_audio_id
-        )
+        st.session_state.last_audio_id = current_audio_id
 
         st.info(
             "🔄 Your voice is being processed..."
@@ -4779,8 +4612,9 @@ prompt = (
     else voice_input
 )
 
+
 # ==========================================================
-# MAIN CHAT PROCESSING
+# PROCESS NEW MESSAGE FIRST
 # ==========================================================
 
 if prompt:
@@ -4788,152 +4622,138 @@ if prompt:
     prompt = str(prompt).strip()
 
     if not prompt:
-        st.warning("Please enter a question.")
+
+        st.warning(
+            "Please enter a question."
+        )
+
         st.stop()
 
-    # ------------------------------------------------------
+
+    # ======================================================
     # SAVE USER MESSAGE
-    # ------------------------------------------------------
+    # ======================================================
 
     st.session_state.messages.append({
         "role": "user",
         "content": prompt
     })
 
-    # ------------------------------------------------------
-    # DISPLAY USER MESSAGE
-    # ------------------------------------------------------
 
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    try:
 
-    # ------------------------------------------------------
-    # AI RESPONSE
-    # ------------------------------------------------------
+        # ==================================================
+        # MEMORY
+        # ==================================================
 
-    with st.chat_message("assistant"):
+        try:
 
-        with st.spinner("🤖 Thinking..."):
+            memory_context = get_memory_context(
+                prompt,
+                max_memories=8
+            )
+
+        except Exception:
+
+            memory_context = (
+                "No long-term memory is available "
+                "for this user."
+            )
+
+
+        # ==================================================
+        # DOCUMENT RETRIEVAL
+        # ==================================================
+
+        document_context = ""
+
+        if st.session_state.vector_store is not None:
 
             try:
 
-                answer = ""
-
-                # ==================================================
-                # MEMORY
-                # ==================================================
-
-                try:
-
-                    memory_context = get_memory_context(
+                docs = (
+                    st.session_state.vector_store
+                    .similarity_search(
                         prompt,
-                        max_memories=8
+                        k=5
+                    )
+                )
+
+                if docs:
+
+                    document_context = "\n\n".join(
+                        str(doc.page_content)
+                        for doc in docs
+                        if getattr(
+                            doc,
+                            "page_content",
+                            None
+                        )
                     )
 
-                except Exception:
-
-                    memory_context = (
-                        "No long-term memory is available "
-                        "for this user."
-                    )
-
-                # ==================================================
-                # DOCUMENT RETRIEVAL
-                # ==================================================
+            except Exception:
 
                 document_context = ""
 
-                if st.session_state.vector_store is not None:
 
-                    try:
+        # ==================================================
+        # WEB SEARCH
+        # ==================================================
 
-                        docs = (
-                            st.session_state.vector_store
-                            .similarity_search(
-                                prompt,
-                                k=5
-                            )
+        web_context = ""
+
+        try:
+
+            search_results = []
+
+            with DDGS() as ddgs:
+
+                results = ddgs.text(
+                    prompt,
+                    max_results=5
+                )
+
+                for result in results:
+
+                    title = result.get(
+                        "title",
+                        ""
+                    )
+
+                    body = result.get(
+                        "body",
+                        ""
+                    )
+
+                    href = result.get(
+                        "href",
+                        ""
+                    )
+
+                    if title or body:
+
+                        search_results.append(
+                            f"TITLE: {title}\n"
+                            f"CONTENT: {body}\n"
+                            f"SOURCE: {href}"
                         )
 
-                        if docs:
+            if search_results:
 
-                            document_context = "\n\n".join(
-                                str(doc.page_content)
-                                for doc in docs
-                                if getattr(
-                                    doc,
-                                    "page_content",
-                                    None
-                                )
-                            )
+                web_context = "\n\n".join(
+                    search_results
+                )
 
-                    except Exception:
+        except Exception:
 
-                        document_context = ""
+            web_context = ""
 
-                # ==================================================
-                # EXTERNAL WEB SEARCH
-                # ==================================================
 
-                web_context = ""
+        # ==================================================
+        # SYSTEM PROMPT
+        # ==================================================
 
-                try:
-
-                    # Search the web so general/current questions
-                    # can be answered even when a PDF is uploaded.
-
-                    search_results = []
-
-                    with DDGS() as ddgs:
-
-                        results = ddgs.text(
-                            prompt,
-                            max_results=5
-                        )
-
-                        for result in results:
-
-                            title = result.get(
-                                "title",
-                                ""
-                            )
-
-                            body = result.get(
-                                "body",
-                                ""
-                            )
-
-                            href = result.get(
-                                "href",
-                                ""
-                            )
-
-                            if title or body:
-
-                                search_results.append(
-                                    f"TITLE: {title}\n"
-                                    f"CONTENT: {body}\n"
-                                    f"SOURCE: {href}"
-                                )
-
-                    if search_results:
-
-                        web_context = "\n\n".join(
-                            search_results
-                        )
-
-                except Exception:
-
-                    # Web search failure must NEVER
-                    # break normal AI chat.
-
-                    web_context = ""
-
-                # ==================================================
-                # FINAL AI PROMPT
-                # ==================================================
-
-                system_prompt = f"""
+        system_prompt = f"""
 You are a highly intelligent AI Study Buddy
 and Expert Teacher.
 
@@ -4982,15 +4802,17 @@ Document rules:
 
 1. Prefer the uploaded document when it actually
    contains the answer.
-2. Do NOT force the document context into the answer
-   when it is unrelated to the question.
-3. If the document does not contain enough information,
-   use the external information below or your
-   general knowledge.
-4. Never pretend that unrelated document text is
+
+2. Do NOT force unrelated document content into
    the answer.
-5. If the user asks something completely unrelated
-   to the uploaded document, answer normally.
+
+3. If the document does not contain enough information,
+   use external information or general knowledge.
+
+4. Never pretend unrelated document text is the answer.
+
+5. If the question is unrelated to the uploaded document,
+   answer normally.
 
 ==================================================
 EXTERNAL INFORMATION
@@ -5003,14 +4825,18 @@ external web sources:
 
 External-source rules:
 
-1. Use external information when the uploaded
-   document does not contain the answer.
-2. For current/general-world questions, prefer
-   useful external information when available.
-3. Do not blindly copy external search text.
+1. Use external information when useful.
+
+2. For current/general-world questions, prefer useful
+   external information when available.
+
+3. Do not blindly copy search text.
+
 4. Combine sources into a clear answer.
+
 5. If external information is unavailable,
-   answer using your general knowledge.
+   use general knowledge.
+
 6. Never mention internal retrieval instructions.
 
 ==================================================
@@ -5022,10 +4848,8 @@ ANSWER STYLE
 3. Give examples when useful.
 4. Use bullets or headings when they improve clarity.
 5. For study questions, explain concepts clearly.
-6. For interview questions, provide basic,
-   intermediate and advanced questions when requested.
-7. Do not unnecessarily repeat the question.
-8. Do not mention AI system instructions.
+6. Do not unnecessarily repeat the question.
+7. Do not mention AI system instructions.
 
 ==================================================
 STRICT OUTPUT RULES
@@ -5052,311 +4876,280 @@ Do not explain how you generated the answer.
 The user must see only the final answer.
 """
 
-                # ==================================================
-                # MODEL CALL
-                # ==================================================
 
-                try:
+        # ==================================================
+        # ONE MODEL CALL ONLY
+        # ==================================================
 
-                    response = get_llm().invoke(
-                        [
-                            SystemMessage(
-                                content=system_prompt
-                            ),
-                            HumanMessage(
-                                content=prompt
-                            )
-                        ]
+        with st.spinner(
+            "🤖 Thinking..."
+        ):
+
+            response = get_llm().invoke(
+                [
+                    SystemMessage(
+                        content=system_prompt
+                    ),
+                    HumanMessage(
+                        content=prompt
                     )
+                ]
+            )
 
-                    answer = response_to_text(
-                        response
-                    )
+        answer = response_to_text(
+            response
+        )
 
-                except Exception as model_error:
+        answer = remove_thinking(
+            answer
+        ).strip()
 
-                    answer = (
-                        f"⚠️ Model error: {model_error}"
-                    )
+        if not answer:
+
+            raise RuntimeError(
+                "AI returned an empty response."
+            )
 
 
-                # ==================================================
-                # REAL IMAGE SEARCH
-                # ==================================================
+        # ==================================================
+        # REAL IMAGE SEARCH — ONLY ONCE
+        # ==================================================
 
-                real_image_results = []
+        real_image_results = []
 
-                if (
-                    st.session_state.get(
-                        "real_image_search_enabled",
-                        True
-                    )
-                    and should_search_images(prompt)
+        if (
+            st.session_state.get(
+                "real_image_search_enabled",
+                True
+            )
+            and should_search_images(prompt)
+        ):
+
+            try:
+
+                with st.spinner(
+                    "🌐 Finding real images..."
                 ):
 
-                    with st.spinner(
-                        "🌐 Finding real images..."
-                    ):
-
-                        real_image_results = search_real_images(
+                    real_image_results = (
+                        search_real_images(
                             prompt,
                             max_results=4
                         )
-
-                # ==================================================
-                # MODEL CALL
-                # ==================================================
-
-                try:
-
-                    response = get_llm().invoke(
-                        [
-                            SystemMessage(
-                                content=system_prompt
-                            ),
-                            HumanMessage(
-                                content=prompt
-                            )
-                        ]
                     )
 
-                    answer = response_to_text(
-                        response
-                    )
+            except Exception:
 
-                except Exception as model_error:
+                real_image_results = []
 
-                    # ==================================================
-                    # HUGGING FACE FALLBACK
-                    # ==================================================
 
-                    hf_token = os.getenv(
-                        "HF_TOKEN"
-                    )
+        # ==================================================
+        # SAVE COMPLETE ASSISTANT MESSAGE
+        # ==================================================
 
-                    if not hf_token:
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": answer,
+            "images": real_image_results
+        })
 
-                        raise RuntimeError(
-                            f"AI model failed: "
-                            f"{model_error}"
-                        )
+
+        # ==================================================
+        # LONG-TERM MEMORY
+        # ==================================================
+
+        try:
+
+            extract_and_save_memories(
+                prompt,
+                answer
+            )
+
+        except Exception:
+
+            pass
+
+
+        # ==================================================
+        # CREATE CHAT AUDIO
+        # ==================================================
+
+        try:
+
+            clean_answer = (
+                clean_text_for_speech(
+                    answer
+                )
+            )
+
+            if clean_answer:
+
+                tts = gTTS(
+                    text=clean_answer,
+                    lang=selected_lang
+                )
+
+                tts.save(
+                    "chat_reply.mp3"
+                )
+
+        except Exception:
+
+            # TTS failure must never break chat.
+            pass
+
+
+        # ==================================================
+        # RERUN — KEY FIX
+        # ==================================================
+
+        # The answer is already inside session_state.messages.
+        # The next run renders the same answer as normal chat
+        # history instead of leaving it as a temporary output.
+
+        st.rerun()
+
+
+    except Exception as e:
+
+        error_text = (
+            "❌ AI Chat Error\n\n"
+            + str(e)
+        )
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": error_text,
+            "images": []
+        })
+
+        st.rerun()
+
+
+# ==========================================================
+# DISPLAY COMPLETE CHAT HISTORY
+# ==========================================================
+
+for message in st.session_state.messages:
+
+    role = message.get(
+        "role",
+        "assistant"
+    )
+
+    with st.chat_message(role):
+
+        content = remove_thinking(
+            str(
+                message.get(
+                    "content",
+                    ""
+                )
+            )
+        )
+
+        if content:
+
+            st.markdown(
+                content
+            )
+
+
+        # ==================================================
+        # REAL IMAGES INSIDE THE SAME ASSISTANT MESSAGE
+        # ==================================================
+
+        images = message.get(
+            "images",
+            []
+        )
+
+        if images:
+
+            st.markdown(
+                "### 🖼️ Related Real Images"
+            )
+
+            columns = st.columns(2)
+
+            for i, image_data in enumerate(
+                images
+            ):
+
+                with columns[i % 2]:
 
                     try:
 
-                        from huggingface_hub import (
-                            InferenceClient
-                        )
-
-                        hf_client = InferenceClient(
-                            api_key=hf_token
-                        )
-
-                        hf_response = (
-                            hf_client.chat_completion(
-                                messages=[
-                                    {
-                                        "role": "system",
-                                        "content": system_prompt
-                                    },
-                                    {
-                                        "role": "user",
-                                        "content": prompt
-                                    }
-                                ],
-                                model=(
-                                    "Qwen/Qwen3-8B"
-                                ),
-                                max_tokens=1200,
-                                temperature=0.3
+                        image_bytes = (
+                            image_data.get(
+                                "image"
                             )
                         )
 
-                        answer = (
-                            hf_response
-                            .choices[0]
-                            .message
-                            .content
+                        if image_bytes:
+
+                            st.image(
+                                image_bytes,
+                                use_container_width=True
+                            )
+
+                        title = image_data.get(
+                            "title",
+                            "Related Image"
                         )
 
-                    except Exception as hf_error:
+                        if title:
 
-                        raise RuntimeError(
-                            "Primary AI model failed.\n\n"
-                            f"Primary error: {model_error}\n\n"
-                            f"Hugging Face fallback error: "
-                            f"{hf_error}"
+                            st.caption(
+                                title
+                            )
+
+                        source_url = image_data.get(
+                            "source",
+                            ""
                         )
 
+                        if source_url:
 
-                # ==================================================
-                # REAL IMAGE SEARCH
-                # ==================================================
+                            st.markdown(
+                                f"[🔗 Open original source]({source_url})"
+                            )
 
-                real_image_results = []
+                    except Exception as image_error:
 
-                if (
-                    st.session_state.get(
-                        "real_image_search_enabled",
-                        True
-                    )
-                    and should_search_images(prompt)
-                ):
-
-                    with st.spinner(
-                        "🌐 Finding real images..."
-                    ):
-
-                        real_image_results = search_real_images(
-                            prompt,
-                            max_results=4
-                        )
-                # ==================================================
-                # TEXT TO SPEECH
-                # ==================================================
-
-                try:
-
-                    clean_answer = (
-                        clean_text_for_speech(
-                            answer
-                        )
-                    )
-
-                    if clean_answer:
-
-                        tts = gTTS(
-                            text=clean_answer,
-                            lang=selected_lang
-                        )
-
-                        tts.save(
-                            "chat_reply.mp3"
-                        )
-
-                        st.audio(
-                            "chat_reply.mp3",
-                            format="audio/mp3"
-                        )
-
-                except Exception:
-
-                    # TTS failure must NEVER
-                    # break the chat.
-
-                    pass
-
-
-                # ==================================================
-                # REAL IMAGE SEARCH
-                # ==================================================
-
-                real_image_results = []
-
-                if (
-                    st.session_state.get(
-                        "real_image_search_enabled",
-                        True
-                    )
-                    and should_search_images(prompt)
-                ):
-
-                    with st.spinner(
-                        "🌐 Finding real images..."
-                    ):
-
-                        real_image_results = search_real_images(
-                            prompt,
-                            max_results=4
+                        print(
+                            "Image display error:",
+                            image_error
                         )
 
 
-                # ==================================================
-                # SAVE AI MESSAGE
-                # ==================================================
+# ==========================================================
+# PLAY LAST CHAT RESPONSE
+# ==========================================================
 
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": answer,
-                    "images": real_image_results
-                })
+if (
+    st.session_state.messages
+    and
+    st.session_state.messages[-1].get(
+        "role"
+    ) == "assistant"
+):
 
+    last_answer = clean_text_for_speech(
+        st.session_state.messages[-1].get(
+            "content",
+            ""
+        )
+    )
 
-                                # ==================================================
-                # DISPLAY REAL IMAGES IMMEDIATELY
-                # ==================================================
+    if (
+        last_answer
+        and
+        Path("chat_reply.mp3").exists()
+    ):
 
-                if real_image_results:
+        st.audio(
+            "chat_reply.mp3",
+            format="audio/mp3"
+        )
 
-                    st.markdown(
-                        "### 🖼️ Related Real Images"
-                    )
-
-                    columns = st.columns(2)
-
-                    for i, image_data in enumerate(
-                        real_image_results
-                    ):
-
-                        with columns[i % 2]:
-
-                            try:
-
-                                image_bytes = image_data.get(
-                                    "image"
-                                )
-
-                                if image_bytes:
-
-                                    st.image(
-                                        image_bytes,
-                                        use_container_width=True
-                                    )
-
-                                title = image_data.get(
-                                    "title",
-                                    "Related Image"
-                                )
-
-                                if title:
-
-                                    st.caption(
-                                        title
-                                    )
-
-                                source_url = image_data.get(
-                                    "source",
-                                    ""
-                                )
-
-                                if source_url:
-
-                                    st.markdown(
-                                        f"[🔗 Open original source]({source_url})"
-                                    )
-
-                            except Exception as image_error:
-
-                                print(
-                                    "Image display error:",
-                                    image_error
-                                )
-
-            # ==================================================
-            # MAIN CHAT ERROR
-            # ==================================================
-
-            except Exception as e:
-
-                error_text = (
-                    "❌ AI Chat Error\n\n"
-                    + str(e)
-                )
-
-                st.error(
-                    error_text
-                )
-
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": error_text
-                })
