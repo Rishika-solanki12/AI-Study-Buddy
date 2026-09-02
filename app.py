@@ -4973,7 +4973,8 @@ The user must see only the final answer.
                 st.write(
                     "DEBUG REAL IMAGES:",
                     real_image_results
-                )                   # ==================================================
+                )                 
+                    # ==================================================
                     # HUGGING FACE FALLBACK
                     # ==================================================
 
