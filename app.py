@@ -5285,15 +5285,10 @@ The user must see only the final answer.
                     pass
 
 
-                # ==================================================
-                # SAVE AI MESSAGE
-                # ==================================================
+# ==================================================
+# REAL IMAGE SEARCH
+# ==================================================
 
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": answer,
-                    "images": real_image_results
-                })
 real_image_results = []
 
 if (
@@ -5313,9 +5308,16 @@ if (
             max_results=4
         )
 
-          
-            
-            # ==================================================
+
+# ==================================================
+# SAVE AI MESSAGE
+# ==================================================
+
+st.session_state.messages.append({
+    "role": "assistant",
+    "content": answer,
+    "images": real_image_results
+})            # ==================================================
             # MAIN CHAT ERROR
             # ==================================================
 
