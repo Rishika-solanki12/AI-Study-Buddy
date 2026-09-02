@@ -2947,7 +2947,7 @@ if st.sidebar.button(
 key="generate_quiz_button"
 ):
 
-```
+
 if st.session_state.vector_store is not None:
 
     with st.spinner(
