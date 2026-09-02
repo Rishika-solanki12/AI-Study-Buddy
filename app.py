@@ -93,9 +93,9 @@ body {
    ========================================================== */
 
 section[data-testid="stSidebar"] {
-    min-width: 350px !important;
-    max-width: 350px !important;
-    width: 350px !important;
+    min-width: 420px !important;
+    max-width: 420px !important;
+    width: 420px !important;
 }
 
 iframe {
