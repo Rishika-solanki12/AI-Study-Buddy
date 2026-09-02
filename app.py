@@ -28,6 +28,7 @@ from groq import Groq
 from huggingface_hub import InferenceClient
 from ddgs import DDGS
 import requests
+from pathlib import Path
 
 # ==========================================================
 # HUGGING FACE SECRET SETUP
