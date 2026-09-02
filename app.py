@@ -4422,6 +4422,7 @@ st.markdown(
     .combined-input-wrapper {
         width: 100%;
         border: 1px solid #d1d5db;
+        border-top: none !important;
         border-radius: 16px;
         padding: 8px;
         background: #ffffff;
