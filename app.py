@@ -27,7 +27,7 @@ from gtts import gTTS
 from groq import Groq
 from huggingface_hub import InferenceClient
 from ddgs import DDGS
-
+import requests
 # ==========================================================
 # PAGE CONFIG
 # ==========================================================
@@ -1308,20 +1308,25 @@ def search_real_images(query, max_results=4):
 
             image_results = ddgs.images(
                 query,
-                max_results=max_results
+                max_results=max_results,
+                safesearch="moderate"
             )
 
             for item in image_results:
 
-                image_url = (
-                    item.get("image")
-                    or item.get("thumbnail")
+                image_url = item.get(
+                    "image",
+                    ""
                 )
 
-                source_url = (
-                    item.get("url")
-                    or item.get("source")
-                    or ""
+                thumbnail_url = item.get(
+                    "thumbnail",
+                    ""
+                )
+
+                source_url = item.get(
+                    "url",
+                    ""
                 )
 
                 title = item.get(
@@ -1329,19 +1334,69 @@ def search_real_images(query, max_results=4):
                     "Related Image"
                 )
 
-                if image_url:
+                # ==========================================
+                # DOWNLOAD IMAGE DIRECTLY
+                # ==========================================
+
+                image_data = None
+
+                for url in [
+                    image_url,
+                    thumbnail_url
+                ]:
+
+                    if not url:
+                        continue
+
+                    try:
+
+                        response = requests.get(
+                            url,
+                            timeout=10,
+                            headers={
+                                "User-Agent":
+                                "Mozilla/5.0"
+                            }
+                        )
+
+                        if (
+                            response.status_code == 200
+                            and response.content
+                        ):
+
+                            image_data = (
+                                response.content
+                            )
+
+                            break
+
+                    except Exception:
+
+                        continue
+
+                # ==========================================
+                # SAVE RESULT
+                # ==========================================
+
+                if image_data:
 
                     results.append({
-                        "image": image_url,
+                        "image": image_data,
                         "source": source_url,
                         "title": title
                     })
 
         return results
 
-    except Exception:
+    except Exception as e:
+
+        print(
+            "Real image search error:",
+            e
+        )
+
         return []
-        # ==========================================================
+# ==========================================================
 # IMAGE SEARCH DECISION
 # ==========================================================
 
@@ -4375,15 +4430,83 @@ for message in st.session_state.messages:
         message["role"]
     ):
 
+        # ==================================================
+        # MESSAGE TEXT
+        # ==================================================
+
         st.markdown(
             remove_thinking(
                 str(
-                    message.get("content", "")
+                    message.get(
+                        "content",
+                        ""
+                    )
                 )
             )
         )
 
         # ==================================================
+        # REAL IMAGES
+        # ==================================================
+
+        images = message.get(
+            "images",
+            []
+        )
+
+        if images:
+
+            st.markdown(
+                "### 🖼️ Related Real Images"
+            )
+
+            columns = st.columns(2)
+
+            for i, image_data in enumerate(images):
+
+                with columns[i % 2]:
+
+                    try:
+
+                        image_bytes = image_data.get(
+                            "image"
+                        )
+
+                        if image_bytes:
+
+                            st.image(
+                                image_bytes,
+                                use_container_width=True
+                            )
+
+                        title = image_data.get(
+                            "title",
+                            "Related Image"
+                        )
+
+                        if title:
+
+                            st.caption(
+                                title
+                            )
+
+                        source_url = image_data.get(
+                            "source",
+                            ""
+                        )
+
+                        if source_url:
+
+                            st.markdown(
+                                f"[🔗 Open original source]({source_url})"
+                            )
+
+                    except Exception as e:
+
+                        print(
+                            "Image display error:",
+                            e
+                        )        # ==================================================
         # REAL IMAGES
         # ==================================================
 
@@ -5171,8 +5294,27 @@ The user must see only the final answer.
                     "content": answer,
                     "images": real_image_results
                 })
+real_image_results = []
 
+if (
+    st.session_state.get(
+        "real_image_search_enabled",
+        True
+    )
+    and should_search_images(prompt)
+):
 
+    with st.spinner(
+        "🌐 Finding real images..."
+    ):
+
+        real_image_results = search_real_images(
+            prompt,
+            max_results=4
+        )
+
+          
+            
             # ==================================================
             # MAIN CHAT ERROR
             # ==================================================
