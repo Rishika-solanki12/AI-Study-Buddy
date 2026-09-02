@@ -4967,13 +4967,28 @@ The user must see only the final answer.
                         )
 
                 # ==================================================
-                # DEBUG - TEMPORARY
+                # MODEL CALL
                 # ==================================================
 
-                st.write(
-                    "DEBUG REAL IMAGES:",
-                    real_image_results
-                )                 
+                try:
+
+                    response = get_llm().invoke(
+                        [
+                            SystemMessage(
+                                content=system_prompt
+                            ),
+                            HumanMessage(
+                                content=prompt
+                            )
+                        ]
+                    )
+
+                    answer = response_to_text(
+                        response
+                    )
+
+                except Exception as model_error:
+
                     # ==================================================
                     # HUGGING FACE FALLBACK
                     # ==================================================
@@ -5035,6 +5050,31 @@ The user must see only the final answer.
                             f"{hf_error}"
                         )
 
+
+                # ==================================================
+                # REAL IMAGE SEARCH
+                # ==================================================
+
+                real_image_results = []
+
+                if (
+                    st.session_state.get(
+                        "real_image_search_enabled",
+                        True
+                    )
+                    and should_search_images(prompt)
+                ):
+
+                    with st.spinner(
+                        "🌐 Finding real images..."
+                    ):
+
+                        real_image_results = search_real_images(
+                            prompt,
+                            max_results=4
+                        )
+
+
                 # ==================================================
                 # FINAL ANSWER CLEANUP
                 # ==================================================
@@ -5057,6 +5097,7 @@ The user must see only the final answer.
                         "AI returned an empty answer."
                     )
 
+
                 # ==================================================
                 # DISPLAY FINAL ANSWER
                 # ==================================================
@@ -5064,6 +5105,7 @@ The user must see only the final answer.
                 st.markdown(
                     answer
                 )
+
 
                 # ==================================================
                 # SAVE MEMORY
@@ -5082,6 +5124,7 @@ The user must see only the final answer.
                     # break the chat.
 
                     pass
+
 
                 # ==================================================
                 # TEXT TO SPEECH
@@ -5118,6 +5161,7 @@ The user must see only the final answer.
 
                     pass
 
+
                 # ==================================================
                 # SAVE AI MESSAGE
                 # ==================================================
@@ -5127,6 +5171,8 @@ The user must see only the final answer.
                     "content": answer,
                     "images": real_image_results
                 })
+
+
             # ==================================================
             # MAIN CHAT ERROR
             # ==================================================
