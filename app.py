@@ -1172,6 +1172,13 @@ st.write(
     "Upload your study material and search concepts instantly!"
 )
 
+# ==========================================================
+# MAIN APP TABS
+# ==========================================================
+
+files_tab, chat_tab = st.tabs(
+    ["📁 Files & Study", "💬 Main Chat"]
+)
 
 # ==========================================================
 # SIDEBAR UPLOAD
