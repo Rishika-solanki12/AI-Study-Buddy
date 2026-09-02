@@ -10,4 +10,5 @@ huggingface_hub>=0.35.0
 openpyxl
 xlrd
 langchain-groq
+ddgs
 
