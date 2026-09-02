@@ -1,3 +1,5 @@
+ui or feature replace   ke phle
+
 import os
 import re
 import json
@@ -864,46 +866,6 @@ If nothing useful exists:
 
 
 # ==========================================================
-# MEMORY SIDEBAR
-# ==========================================================
-
-st.sidebar.markdown("---")
-
-st.sidebar.subheader(
-    "🧠 Long-Term Memory"
-)
-
-current_memories = load_all_memories()
-
-if current_memories:
-
-    st.sidebar.success(
-        f"🧠 {len(current_memories)} "
-        f"memory item(s) saved"
-    )
-
-else:
-
-    st.sidebar.info(
-        "No long-term memories saved yet."
-    )
-
-
-if st.sidebar.button(
-    "🗑️ Forget My Long-Term Memory",
-    key="forget_long_term_memory"
-):
-
-    delete_all_memories()
-
-    st.sidebar.success(
-        "✅ Long-term memory deleted."
-    )
-
-    st.rerun()
-
-
-# ==========================================================
 # LANGUAGE SETTINGS
 # ==========================================================
 
@@ -1210,29 +1172,6 @@ st.title("📚 AI Study Buddy")
 
 st.write(
     "Upload your study material and search concepts instantly!"
-)
-
-
-# ==========================================================
-# REAL IMAGE SEARCH
-# ==========================================================
-
-st.sidebar.markdown("---")
-
-st.sidebar.header("🌐 Real Image Search")
-
-real_image_search_enabled = st.sidebar.checkbox(
-    "🖼️ Show real images from web",
-    value=st.session_state.get(
-        "real_image_search_enabled",
-        True
-    ),
-    key="real_image_search_enabled"
-)
-
-st.sidebar.caption(
-    "When useful, Study Buddy will show real images "
-    "from the web along with the answer."
 )
 
 
@@ -4353,6 +4292,30 @@ if len(
 
 
 # ==========================================================
+# REAL IMAGE SEARCH
+# ==========================================================
+
+st.sidebar.markdown("---")
+
+st.sidebar.header("🌐 Real Image Search")
+
+real_image_search_enabled = st.sidebar.checkbox(
+    "🖼️ Show real images from web",
+    value=st.session_state.get(
+        "real_image_search_enabled",
+        True
+    ),
+    key="real_image_search_enabled"
+)
+
+st.sidebar.caption(
+    "When useful, Study Buddy will show real images "
+    "from the web along with the answer."
+)
+
+
+
+# ==========================================================
 # STUDY ANALYTICS
 # ==========================================================
 
@@ -5154,3 +5117,41 @@ if (
             format="audio/mp3"
         )
 
+# ==========================================================
+# MEMORY SIDEBAR
+# ==========================================================
+
+st.sidebar.markdown("---")
+
+st.sidebar.subheader(
+    "🧠 Long-Term Memory"
+)
+
+current_memories = load_all_memories()
+
+if current_memories:
+
+    st.sidebar.success(
+        f"🧠 {len(current_memories)} "
+        f"memory item(s) saved"
+    )
+
+else:
+
+    st.sidebar.info(
+        "No long-term memories saved yet."
+    )
+
+
+if st.sidebar.button(
+    "🗑️ Forget My Long-Term Memory",
+    key="forget_long_term_memory"
+):
+
+    delete_all_memories()
+
+    st.sidebar.success(
+        "✅ Long-term memory deleted."
+    )
+
+    st.rerun()
