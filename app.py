@@ -2294,34 +2294,38 @@ Never reveal:
 
 
     
-# ==========================================================
-# CURRENT READER SOURCE
-# ==========================================================
+with files_tab:
 
-reader_source_text = None
-reader_source_type = None
-
-if st.session_state.get(
-    "document_explanation"
-):
-
-    reader_source_text = (
-        st.session_state.document_explanation
-    )
-
-    reader_source_type = "Document"
-
-elif st.session_state.get(
-    "image_explanation"
-):
-
-    reader_source_text = (
-        st.session_state.image_explanation
-    )
-
-    reader_source_type = "Image"
+    if st.session_state.vector_store is not None:
+        # Document Study Tools ka existing code
 
 
+    # ==========================================================
+    # CURRENT READER SOURCE
+    # ==========================================================
+
+    reader_source_text = None
+    reader_source_type = None
+
+    if st.session_state.get(
+        "document_explanation"
+    ):
+
+        reader_source_text = (
+            st.session_state.document_explanation
+        )
+
+        reader_source_type = "Document"
+
+    elif st.session_state.get(
+        "image_explanation"
+    ):
+
+        reader_source_text = (
+            st.session_state.image_explanation
+        )
+
+        reader_source_type = "Image"
 # ==========================================================
 # DISPLAY DOCUMENT
 # ==========================================================
