@@ -54,20 +54,16 @@ st.set_option(
 )
 
 
-st.set_option(
-    "client.toolbarMode",
-    "viewer"
-)
+
 
 st.markdown("""
 <style>
-[data-baseweb="tab"] > div {
+[data-baseweb="tab-list"] button[role="tab"] * {
     font-size: 22px !important;
     font-weight: 700 !important;
 }
 </style>
-""", unsafe_allow_html=True)
-# ==========================================================
+""", unsafe_allow_html=True)# ==========================================================
 # CSS
 # ==========================================================
 
