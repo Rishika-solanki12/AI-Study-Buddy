@@ -54,16 +54,17 @@ st.set_option(
 )
 
 
-
-
 st.markdown("""
 <style>
-[data-baseweb="tab-list"] button[role="tab"] * {
-    font-size: 22px !important;
+[data-baseweb="tab-list"] button[data-baseweb="tab"] div,
+[data-baseweb="tab-list"] button[data-baseweb="tab"] span,
+[data-baseweb="tab-list"] button[data-baseweb="tab"] p {
+    font-size: 24px !important;
     font-weight: 700 !important;
 }
 </style>
-""", unsafe_allow_html=True)# ==========================================================
+""", unsafe_allow_html=True)
+# ==========================================================
 # CSS
 # ==========================================================
 
