@@ -4964,9 +4964,16 @@ The user must see only the final answer.
                         real_image_results = search_real_images(
                             prompt,
                             max_results=4
-                        )              
+                        )
 
-                   # ==================================================
+                # ==================================================
+                # DEBUG - TEMPORARY
+                # ==================================================
+
+                st.write(
+                    "DEBUG REAL IMAGES:",
+                    real_image_results
+                )                   # ==================================================
                     # HUGGING FACE FALLBACK
                     # ==================================================
 
