@@ -88,6 +88,16 @@ body {
     overflow-x: hidden !important;
 }
 
+/* ==========================================================
+   SIDEBAR WIDTH
+   ========================================================== */
+
+section[data-testid="stSidebar"] {
+    min-width: 350px !important;
+    max-width: 350px !important;
+    width: 350px !important;
+}
+
 iframe {
     max-width: 100% !important;
     border: none !important;
