@@ -28,6 +28,18 @@ from groq import Groq
 from huggingface_hub import InferenceClient
 from ddgs import DDGS
 import requests
+
+# ==========================================================
+# HUGGING FACE SECRET SETUP
+# ==========================================================
+
+if "HF_TOKEN" in st.secrets:
+    os.environ["HF_TOKEN"] = st.secrets["HF_TOKEN"]
+
+
+# ==========================================================
+# baaki tumhara code
+# ==========================================================
 # ==========================================================
 # PAGE CONFIG
 # ==========================================================
