@@ -11,4 +11,4 @@ openpyxl
 xlrd
 langchain-groq
 ddgs
-
+langchain-community
