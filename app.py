@@ -2289,7 +2289,9 @@ Never reveal:
 
                 st.error(
                     f"❌ Document explanation error: {e}"
-                )   
+                )  
+with files_tab:
+
     # ==========================================================
     # CURRENT READER SOURCE
     # ==========================================================
@@ -2316,236 +2318,210 @@ Never reveal:
         )
 
         reader_source_type = "Image"
-# ==========================================================
-# DISPLAY DOCUMENT
-# ==========================================================
-
-if st.session_state.get(
-    "document_explanation"
-):
-
-    st.markdown("---")
-
-    st.subheader(
-        "📚 AI Document Explanation"
-    )
-
-    st.caption(
-        f"Language: {translation_language}"
-    )
-
-    st.markdown(
-        remove_thinking(
-            st.session_state.document_explanation
-        )
-    )
 
 
-# ==========================================================
-# DISPLAY IMAGE
-# ==========================================================
+    # ==========================================================
+    # DISPLAY DOCUMENT
+    # ==========================================================
 
-if st.session_state.get(
-    "image_explanation"
-):
-
-    st.markdown("---")
-
-    st.subheader(
-        "🖼️ AI Image Explanation"
-    )
-
-    st.caption(
-        f"Language: {translation_language}"
-    )
-
-    st.markdown(
-        remove_thinking(
-            st.session_state.image_explanation
-        )
-    )
-
-
-# ==========================================================
-# CURRENT READER SOURCE
-# ==========================================================
-
-reader_source_text = None
-reader_source_type = None
-
-if st.session_state.get(
-    "document_explanation"
-):
-
-    reader_source_text = (
-        st.session_state.document_explanation
-    )
-
-    reader_source_type = "Document"
-
-elif st.session_state.get(
-    "image_explanation"
-):
-
-    reader_source_text = (
-        st.session_state.image_explanation
-    )
-
-    reader_source_type = "Image"
-
-
-# ==========================================================
-# COMMON SMART READER
-# ==========================================================
-
-if reader_source_text:
-
-    st.markdown("---")
-
-    st.subheader(
-        f"🔊📖 Smart Reader — {reader_source_type}"
-    )
-
-    st.caption(
-        f"Reading language: {listen_language}"
-    )
-
-    if reader_source_type == "Image":
-
-        cached_text = (
-            st.session_state.image_speaker_text
-        )
-
-        cached_language = (
-            st.session_state.image_speaker_text_language
-        )
-
-    else:
-
-        cached_text = (
-            st.session_state.document_speaker_text
-        )
-
-        cached_language = (
-            st.session_state.document_speaker_text_language
-        )
-
-    if listen_language == translation_language:
-
-        speech_text = clean_text_for_speech(
-            reader_source_text
-        )
-
-    elif (
-        cached_text
-        and
-        cached_language == listen_language
+    if st.session_state.get(
+        "document_explanation"
     ):
 
-        speech_text = cached_text
+        st.markdown("---")
 
-    else:
+        st.subheader(
+            "📚 AI Document Explanation"
+        )
 
-        speech_text = ""
+        st.caption(
+            f"Language: {translation_language}"
+        )
 
-        if st.button(
-            f"🌐 Prepare {listen_language} Reading",
-            key=(
-                f"prepare_reader_translation_"
-                f"{reader_source_type}"
+        st.markdown(
+            remove_thinking(
+                st.session_state.document_explanation
             )
+        )
+
+
+    # ==========================================================
+    # DISPLAY IMAGE
+    # ==========================================================
+
+    if st.session_state.get(
+        "image_explanation"
+    ):
+
+        st.markdown("---")
+
+        st.subheader(
+            "🖼️ AI Image Explanation"
+        )
+
+        st.caption(
+            f"Language: {translation_language}"
+        )
+
+        st.markdown(
+            remove_thinking(
+                st.session_state.image_explanation
+            )
+        )
+
+
+    # ==========================================================
+    # COMMON SMART READER
+    # ==========================================================
+
+    if reader_source_text:
+
+        st.markdown("---")
+
+        st.subheader(
+            f"🔊📖 Smart Reader — {reader_source_type}"
+        )
+
+        st.caption(
+            f"Reading language: {listen_language}"
+        )
+
+        if reader_source_type == "Image":
+
+            cached_text = (
+                st.session_state.image_speaker_text
+            )
+
+            cached_language = (
+                st.session_state.image_speaker_text_language
+            )
+
+        else:
+
+            cached_text = (
+                st.session_state.document_speaker_text
+            )
+
+            cached_language = (
+                st.session_state.document_speaker_text_language
+            )
+
+        if listen_language == translation_language:
+
+            speech_text = clean_text_for_speech(
+                reader_source_text
+            )
+
+        elif (
+            cached_text
+            and
+            cached_language == listen_language
         ):
 
-            with st.spinner(
-                f"🌐 Translating into "
-                f"{listen_language}..."
+            speech_text = cached_text
+
+        else:
+
+            speech_text = ""
+
+            if st.button(
+                f"🌐 Prepare {listen_language} Reading",
+                key=(
+                    f"prepare_reader_translation_"
+                    f"{reader_source_type}"
+                )
             ):
 
-                try:
+                with st.spinner(
+                    f"🌐 Translating into "
+                    f"{listen_language}..."
+                ):
 
-                    translated_text = (
-                        translate_for_speech(
-                            reader_source_text,
-                            listen_language
+                    try:
+
+                        translated_text = (
+                            translate_for_speech(
+                                reader_source_text,
+                                listen_language
+                            )
                         )
-                    )
 
-                    if not translated_text:
+                        if not translated_text:
 
-                        raise ValueError(
-                            "Translation returned empty text."
-                        )
+                            raise ValueError(
+                                "Translation returned empty text."
+                            )
 
-                    if reader_source_type == "Image":
+                        if reader_source_type == "Image":
 
-                        st.session_state.image_speaker_text = (
+                            st.session_state.image_speaker_text = (
+                                translated_text
+                            )
+
+                            st.session_state.image_speaker_text_language = (
+                                listen_language
+                            )
+
+                        else:
+
+                            st.session_state.document_speaker_text = (
+                                translated_text
+                            )
+
+                            st.session_state.document_speaker_text_language = (
+                                listen_language
+                            )
+
+                        st.session_state.speaker_text = (
                             translated_text
                         )
 
-                        st.session_state.image_speaker_text_language = (
+                        st.session_state.speaker_text_language = (
                             listen_language
                         )
 
-                    else:
-
-                        st.session_state.document_speaker_text = (
-                            translated_text
+                        st.success(
+                            f"✅ {listen_language} reading ready!"
                         )
 
-                        st.session_state.document_speaker_text_language = (
-                            listen_language
+                        st.rerun()
+
+                    except Exception as e:
+
+                        st.error(
+                            f"❌ Translation error: {e}"
                         )
 
-                    st.session_state.speaker_text = (
-                        translated_text
-                    )
 
-                    st.session_state.speaker_text_language = (
-                        listen_language
-                    )
+        # ======================================================
+        # SMART READER
+        # ======================================================
 
-                    st.success(
-                        f"✅ {listen_language} reading ready!"
-                    )
+        if speech_text:
 
-                    st.rerun()
+            sentences = re.split(
+                r'(?<=[.!?।॥])\s+',
+                speech_text
+            )
 
-                except Exception as e:
-
-                    st.error(
-                        f"❌ Translation error: {e}"
-                    )
-
-
-    # ======================================================
-    # SMART READER
-    # ======================================================
-
-    if speech_text:
-
-        sentences = re.split(
-            r'(?<=[.!?।॥])\s+',
-            speech_text
-        )
-
-        sentences = [
-            sentence.strip()
-            for sentence in sentences
-            if sentence.strip()
-        ]
-
-        sentences_json = json.dumps(
-            sentences,
-            ensure_ascii=False
-        )
-
-        language_code = (
-            SPEAKER_LANGUAGE_CODES[
-                listen_language
+            sentences = [
+                sentence.strip()
+                for sentence in sentences
+                if sentence.strip()
             ]
-        )
 
-        reader_html = """
+            sentences_json = json.dumps(
+                sentences,
+                ensure_ascii=False
+            )
+
+            language_code = (
+                SPEAKER_LANGUAGE_CODES[
+                    listen_language
+                ]
+            )
+
+            reader_html = """
 <!DOCTYPE html>
 <html>
 
@@ -2923,22 +2899,21 @@ function stopReader() {
 </html>
 """
 
-        reader_html = reader_html.replace(
-            "__SENTENCES__",
-            sentences_json
-        )
+            reader_html = reader_html.replace(
+                "__SENTENCES__",
+                sentences_json
+            )
 
-        reader_html = reader_html.replace(
-            "__LANGUAGE__",
-            language_code
-        )
+            reader_html = reader_html.replace(
+                "__LANGUAGE__",
+                language_code
+            )
 
-        components.html(
-            reader_html,
-            height=600,
-            scrolling=True
-        )
-
+            components.html(
+                reader_html,
+                height=600,
+                scrolling=True
+            )
 
 
 # ==========================================================
@@ -2950,7 +2925,6 @@ st.sidebar.markdown("---")
 st.sidebar.subheader(
     "🧠 Smart Study Tools"
 )
-
 
 # ==========================================================
 # QUIZ
