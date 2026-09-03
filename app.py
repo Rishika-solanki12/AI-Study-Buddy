@@ -303,7 +303,7 @@ def remove_thinking(text):
     text = str(text)
 s
     # Remove <think>...</think>
-    text = re.sub(
+        text = re.sub(
         r"<think\b[^>]*>.*?</think>",
         "",
         text,
