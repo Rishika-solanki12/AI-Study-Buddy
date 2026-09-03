@@ -64,6 +64,8 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
+
+
 # ==========================================================
 # CSS
 # ==========================================================
@@ -150,7 +152,7 @@ DEFAULT_STATE = {
 
     "memory_user_id": None,
     "memory_loaded": False,
-    
+
     "document_explanation": None,
     "image_explanation": None,
 
@@ -175,6 +177,12 @@ DEFAULT_STATE = {
     "image_sentence_count": 3,
 
     "last_audio_id": None,
+
+    # ======================================================
+    # MAIN CHAT AUTO-OPEN
+    # ======================================================
+
+    "open_main_chat": False,
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -326,7 +334,10 @@ def remove_thinking(text):
         text
     )
 
-    return text.strip()# ==========================================================
+    return text.strip()
+
+
+# ==========================================================
 # SAFE LLM CALL
 # ==========================================================
 
@@ -878,14 +889,18 @@ EXPLANATION_LANGUAGES = [
     "English",
     "Hindi"
 ]
+
 SPEAKER_LANGUAGE_CODES = {
     "English": "en-US",
     "Hindi": "hi-IN"
 }
+
 TTS_LANGUAGE_CODES = {
     "English": "en",
     "Hindi": "hi"
 }
+
+
 # ==========================================================
 # LANGUAGE INSTRUCTION
 # ==========================================================
@@ -1166,7 +1181,6 @@ def clean_text_for_speech(text):
     )
 
     return text.strip()
-    
 
 
 # ==========================================================
@@ -1179,13 +1193,33 @@ st.write(
     "Upload your study material and search concepts instantly!"
 )
 
+
 # ==========================================================
 # MAIN APP TABS
 # ==========================================================
 
+# ==========================================================
+# AUTO OPEN MAIN CHAT
+# ==========================================================
+
+if st.session_state.get("open_main_chat"):
+
+    st.session_state["main_app_tab"] = "💬 Main Chat"
+
+    st.session_state["open_main_chat"] = False
+
+
+if "main_app_tab" not in st.session_state:
+
+    st.session_state["main_app_tab"] = "📁 Files & Study"
+
+
 files_tab, chat_tab = st.tabs(
-    ["📁 Files & Study", "💬 Main Chat"]
+    ["📁 Files & Study", "💬 Main Chat"],
+    key="main_app_tab",
+    on_change="rerun"
 )
+
 
 # ==========================================================
 # SIDEBAR UPLOAD
@@ -2004,8 +2038,6 @@ in the uploaded study material.
                     st.session_state.vector_store
                 )
 
-                # Retrieve a larger number of chunks so that
-                # more of the uploaded document is available.
                 docs = vector_store.similarity_search(
                     "important topics concepts definitions "
                     "explanations examples formulas code "
@@ -2192,17 +2224,6 @@ STUDY MATERIAL:
 {document_context}
 """
 
-                # ==================================================
-                # CALL NORMAL TEXT LLM
-                # ==================================================
-                #
-                # IMPORTANT:
-                # Document explanation uses get_llm().
-                # Camera/image analysis should continue using
-                # get_vision_llm() in its own separate code.
-                #
-                # ==================================================
-
                 response = get_llm().invoke(
                     [
                         SystemMessage(
@@ -2231,17 +2252,9 @@ Never reveal:
                     ]
                 )
 
-                # ==================================================
-                # CONVERT RESPONSE TO TEXT
-                # ==================================================
-
                 explanation = response_to_text(
                     response
                 )
-
-                # ==================================================
-                # REMOVE THINKING / ANALYSIS OUTPUT
-                # ==================================================
 
                 explanation = remove_thinking(
                     explanation
@@ -2251,33 +2264,20 @@ Never reveal:
                     explanation
                 ).strip()
 
-                # ==================================================
-                # EMPTY RESPONSE CHECK
-                # ==================================================
-
                 if not explanation:
 
                     raise RuntimeError(
                         "AI generated an empty explanation."
                     )
 
-                # ==================================================
-                # SAVE DOCUMENT EXPLANATION
-                # ==================================================
-
                 st.session_state.document_explanation = (
                     explanation
                 )
 
-                # Reset old speaker output
                 st.session_state.document_speaker_text = None
                 st.session_state.document_speaker_text_language = None
                 st.session_state.speaker_text = None
                 st.session_state.speaker_text_language = None
-
-                # ==================================================
-                # SUCCESS MESSAGE
-                # ==================================================
 
                 st.success(
                     f"✅ Document analyzed successfully "
@@ -2289,7 +2289,9 @@ Never reveal:
 
                 st.error(
                     f"❌ Document explanation error: {e}"
-                )  
+                )
+
+
 with files_tab:
 
     # ==========================================================
@@ -2917,16 +2919,15 @@ function stopReader() {
 
 
 # ==========================================================
-
 # SMART STUDY TOOLS
-
 # ==========================================================
 
 st.sidebar.markdown("---")
 
 st.sidebar.subheader(
-"🧠 Smart Study Tools"
+    "🧠 Smart Study Tools"
 )
+
 
 # ==========================================================
 # QUIZ
@@ -3163,6 +3164,8 @@ Requirements:
         st.sidebar.error(
             "Please upload and process a document first!"
         )
+
+
 # ==========================================================
 # FIND STUDY TOPICS
 # ==========================================================
@@ -3279,6 +3282,8 @@ Rules:
         st.sidebar.error(
             "Please upload and process a document first!"
         )
+
+
 # ==========================================================
 # SELECT TOPIC + MIND MAP
 # ==========================================================
@@ -3629,6 +3634,8 @@ with files_tab:
                 st.session_state.quiz_data = None
 
                 st.rerun()
+
+
 # ==========================================================
 # CHAT SETTINGS
 # ==========================================================
@@ -3695,6 +3702,7 @@ if st.sidebar.button(
     st.session_state.messages = []
 
     st.rerun()
+
 
 # ==========================================================
 # IMAGE GENERATION
@@ -3767,6 +3775,7 @@ def generate_ai_image(prompt):
 
     return image
 
+
 # ==========================================================
 # REAL IMAGE SEARCH FUNCTION
 # ==========================================================
@@ -3807,10 +3816,6 @@ def search_real_images(query, max_results=4):
                     "Related Image"
                 )
 
-                # ==========================================
-                # DOWNLOAD IMAGE DIRECTLY
-                # ==========================================
-
                 image_data = None
 
                 for url in [
@@ -3847,10 +3852,6 @@ def search_real_images(query, max_results=4):
 
                         continue
 
-                # ==========================================
-                # SAVE RESULT
-                # ==========================================
-
                 if image_data:
 
                     results.append({
@@ -3869,6 +3870,8 @@ def search_real_images(query, max_results=4):
         )
 
         return []
+
+
 # ==========================================================
 # IMAGE SEARCH DECISION
 # ==========================================================
@@ -3928,6 +3931,7 @@ def should_search_images(prompt):
         keyword in prompt_lower
         for keyword in image_keywords
     )
+
 
 if generate_image_button:
 
@@ -4033,8 +4037,6 @@ if st.session_state.get(
             use_container_width=True,
             key="download_generated_ai_image"
         )
-
-
 
 
 # ==========================================================
@@ -4173,7 +4175,6 @@ st.sidebar.caption(
 )
 
 
-
 # ==========================================================
 # STUDY ANALYTICS
 # ==========================================================
@@ -4249,32 +4250,170 @@ else:
 # MAIN CHAT — FIXED
 # ==========================================================
 #
-# The previous version had:
-# - chat history rendered BEFORE current-input processing
-# - the LLM called multiple times
-# - real-image search called multiple times
-# - the current response rendered temporarily instead of being
-#   rendered from session_state after a rerun
+# Chat OUTPUT is now inside Main Chat tab.
 #
-# This version:
-# 1. gets the new question,
-# 2. generates the answer exactly once,
-# 3. searches real images at most once,
-# 4. saves the complete assistant message,
-# 5. reruns,
-# 6. renders the complete chat from session_state.
+# Recorder + Ask Your Question remain outside the tab
+# so they continue to work from Files & Study as well.
 #
-# Result: normal text/search answers, real images, and voice
-# playback stay attached to the main chat conversation.
+# When a question is submitted:
+# 1. question is saved
+# 2. answer is generated
+# 3. answer is saved
+# 4. open_main_chat is set to True
+# 5. rerun happens
+# 6. Main Chat tab automatically becomes active
+# 7. complete chat history is rendered inside Main Chat
+#
+# ==========================================================
+
+
+# ==========================================================
+# MAIN CHAT OUTPUT — ONLY INSIDE MAIN CHAT TAB
+# ==========================================================
+
+with chat_tab:
+
+    st.subheader(
+        "💬 Chat with your Study Buddy"
+    )
+
+    # ======================================================
+    # DISPLAY COMPLETE CHAT HISTORY
+    # ======================================================
+
+    for message in st.session_state.messages:
+
+        role = message.get(
+            "role",
+            "assistant"
+        )
+
+        with st.chat_message(role):
+
+            content = remove_thinking(
+                str(
+                    message.get(
+                        "content",
+                        ""
+                    )
+                )
+            )
+
+            if content:
+
+                st.markdown(
+                    content
+                )
+
+
+            # ==================================================
+            # REAL IMAGES INSIDE THE SAME ASSISTANT MESSAGE
+            # ==================================================
+
+            images = message.get(
+                "images",
+                []
+            )
+
+            if images:
+
+                st.markdown(
+                    "### 🖼️ Related Real Images"
+                )
+
+                columns = st.columns(2)
+
+                for i, image_data in enumerate(
+                    images
+                ):
+
+                    with columns[i % 2]:
+
+                        try:
+
+                            image_bytes = (
+                                image_data.get(
+                                    "image"
+                                )
+                            )
+
+                            if image_bytes:
+
+                                st.image(
+                                    image_bytes,
+                                    use_container_width=True
+                                )
+
+                            title = image_data.get(
+                                "title",
+                                "Related Image"
+                            )
+
+                            if title:
+
+                                st.caption(
+                                    title
+                                )
+
+                            source_url = image_data.get(
+                                "source",
+                                ""
+                            )
+
+                            if source_url:
+
+                                st.markdown(
+                                    f"[🔗 Open original source]({source_url})"
+                                )
+
+                        except Exception as image_error:
+
+                            print(
+                                "Image display error:",
+                                image_error
+                            )
+
+
+    # ======================================================
+    # PLAY LAST CHAT RESPONSE
+    # ======================================================
+
+    if (
+        st.session_state.messages
+        and
+        st.session_state.messages[-1].get(
+            "role"
+        ) == "assistant"
+    ):
+
+        last_answer = clean_text_for_speech(
+            st.session_state.messages[-1].get(
+                "content",
+                ""
+            )
+        )
+
+        if (
+            last_answer
+            and
+            Path("chat_reply.mp3").exists()
+        ):
+
+            st.audio(
+                "chat_reply.mp3",
+                format="audio/mp3"
+            )
+
+
+# ==========================================================
+# CHAT INPUT
+#
+# IMPORTANT:
+# These controls remain OUTSIDE the tabs intentionally.
+# Therefore user can ask from Files & Study tab.
+# ==========================================================
 
 st.sidebar.markdown("---")
-
-st.subheader("💬 Chat with your Study Buddy")
-
-
-# ==========================================================
-# COMBINED INPUT
-# ==========================================================
 
 st.markdown(
     """
@@ -4325,7 +4464,9 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.write("🎤 **Ask your Study Buddy by voice or text:**")
+st.write(
+    "🎤 **Ask your Study Buddy by voice or text:**"
+)
 
 input_container = st.container()
 
@@ -4342,6 +4483,7 @@ with input_container:
     )
 
     with input_col1:
+
         audio = st.audio_input(
             "",
             key="my_voice_mic",
@@ -4349,6 +4491,7 @@ with input_container:
         )
 
     with input_col2:
+
         text_input = st.chat_input(
             "Ask your question..."
         )
@@ -4824,12 +4967,15 @@ The user must see only the final answer.
 
 
         # ==================================================
-        # RERUN — KEY FIX
-        # ==================================================
+        # AUTO OPEN MAIN CHAT — KEY CHANGE
+        # ==========================================================
 
-        # The answer is already inside session_state.messages.
-        # The next run renders the same answer as normal chat
-        # history instead of leaving it as a temporary output.
+        st.session_state.open_main_chat = True
+
+
+        # ==================================================
+        # RERUN
+        # ==========================================================
 
         st.rerun()
 
@@ -4847,135 +4993,15 @@ The user must see only the final answer.
             "images": []
         })
 
+
+        # ==================================================
+        # AUTO OPEN MAIN CHAT EVEN ON ERROR
+        # ==================================================
+
+        st.session_state.open_main_chat = True
+
         st.rerun()
 
-
-# ==========================================================
-# DISPLAY COMPLETE CHAT HISTORY
-# ==========================================================
-
-for message in st.session_state.messages:
-
-    role = message.get(
-        "role",
-        "assistant"
-    )
-
-    with st.chat_message(role):
-
-        content = remove_thinking(
-            str(
-                message.get(
-                    "content",
-                    ""
-                )
-            )
-        )
-
-        if content:
-
-            st.markdown(
-                content
-            )
-
-
-        # ==================================================
-        # REAL IMAGES INSIDE THE SAME ASSISTANT MESSAGE
-        # ==================================================
-
-        images = message.get(
-            "images",
-            []
-        )
-
-        if images:
-
-            st.markdown(
-                "### 🖼️ Related Real Images"
-            )
-
-            columns = st.columns(2)
-
-            for i, image_data in enumerate(
-                images
-            ):
-
-                with columns[i % 2]:
-
-                    try:
-
-                        image_bytes = (
-                            image_data.get(
-                                "image"
-                            )
-                        )
-
-                        if image_bytes:
-
-                            st.image(
-                                image_bytes,
-                                use_container_width=True
-                            )
-
-                        title = image_data.get(
-                            "title",
-                            "Related Image"
-                        )
-
-                        if title:
-
-                            st.caption(
-                                title
-                            )
-
-                        source_url = image_data.get(
-                            "source",
-                            ""
-                        )
-
-                        if source_url:
-
-                            st.markdown(
-                                f"[🔗 Open original source]({source_url})"
-                            )
-
-                    except Exception as image_error:
-
-                        print(
-                            "Image display error:",
-                            image_error
-                        )
-
-
-# ==========================================================
-# PLAY LAST CHAT RESPONSE
-# ==========================================================
-
-if (
-    st.session_state.messages
-    and
-    st.session_state.messages[-1].get(
-        "role"
-    ) == "assistant"
-):
-
-    last_answer = clean_text_for_speech(
-        st.session_state.messages[-1].get(
-            "content",
-            ""
-        )
-    )
-
-    if (
-        last_answer
-        and
-        Path("chat_reply.mp3").exists()
-    ):
-
-        st.audio(
-            "chat_reply.mp3",
-            format="audio/mp3"
-        )
 
 # ==========================================================
 # MEMORY SIDEBAR
