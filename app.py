@@ -1331,10 +1331,18 @@ listen_language = st.sidebar.selectbox(
 )
 
 
+
 # ==========================================================
 # FILE PROCESSING
 # ==========================================================
 
+image_files = []      # <--- YE NAYI LINE ADD KARNI HAI
+document_files = []   # <--- YE BHI ADD KAR DIJIYE SAFETY KE LIYE
+
+if all_uploaded_files:
+    pdf_files = [f for f in all_uploaded_files if f.name.lower().endswith(".pdf")]
+    doc_files = [f for f in all_uploaded_files if f.name.lower().endswith(".doc")]
+    docx_files = [f for f in all_uploaded_files if f.name.lower().endswith(".docx")]
 if all_uploaded_files:
 
     pdf_files = [
