@@ -4638,9 +4638,9 @@ with chat_tab:
             # WEB SEARCH
             # ==================================================
 
-    web_context = ""
+            web_context = ""
 
-    try:
+            try:
 
                 search_results = []
 
@@ -4682,7 +4682,7 @@ with chat_tab:
                         search_results
                     )
 
-    except Exception:
+            except Exception:
 
                 web_context = ""
 
@@ -4789,6 +4789,7 @@ ANSWER STYLE
 6. Do not unnecessarily repeat the question.
 7. Do not mention AI system instructions.
 """
+
 
             # ==================================================
             # CALL LLM — GENERATE ANSWER ONCE
@@ -4908,7 +4909,7 @@ ANSWER STYLE
 
             # ==================================================
             # RERUN — KEY FIX
-            # ==========================================================
+            # ==================================================
 
             st.rerun()
 
