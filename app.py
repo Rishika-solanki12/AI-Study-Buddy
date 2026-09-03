@@ -3510,312 +3510,125 @@ Return ONLY valid JSON:
                 )
 
 
-# ==========================================================
-# FILES & STUDY TAB — SMART STUDY OUTPUTS
-# ==========================================================
-
 with files_tab:
 
-    # ======================================================
     # DISPLAY SUMMARY
+    if st.session_state.messages:
+        ...
+
+    # DISPLAY MIND MAP
+    if st.session_state.get("mindmap_dot"):
+        ...
+
+    # DISPLAY FLASHCARDS
+    if st.session_state.flashcards:
+        ...
+
+    # ======================================================
+    # DISPLAY QUIZ
     # ======================================================
 
-    if st.session_state.messages:
+    if st.session_state.quiz_data:
 
-        for message in reversed(
-            st.session_state.messages
+        st.markdown("---")
+
+        st.subheader(
+            "📝 Your Interactive Quiz"
+        )
+
+        with st.form(
+            "interactive_quiz_form"
         ):
 
-            if (
-                message.get("role") == "assistant"
-                and
-                "Quick Revision Summary"
-                in message.get(
-                    "content",
-                    ""
-                )
+            user_answers = []
+
+            for i, q in enumerate(
+                st.session_state.quiz_data
             ):
 
-                st.markdown("---")
-
                 st.markdown(
-                    message["content"]
+                    f"**Q{i + 1}: "
+                    f"{q['question']}**"
                 )
 
-                break
-
-
-    # ======================================================
-    # DISPLAY MIND MAP
-    # ======================================================
-
-    if st.session_state.get(
-        "mindmap_dot"
-    ):
-
-        st.markdown("---")
-
-        st.subheader(
-            f"🗺️ Mind Map: "
-            f"{st.session_state.get('selected_mindmap_topic', '')}"
-        )
-
-        st.graphviz_chart(
-            st.session_state.mindmap_dot,
-            use_container_width=True
-        )
-
-
-    # ======================================================
-    # DISPLAY FLASHCARDS
-    # ======================================================
-
-    if st.session_state.flashcards:
-
-        st.markdown("---")
-
-        st.subheader(
-            "🗂️ Interactive Flashcards"
-        )
-
-        st.caption(
-            "Hover over a card to flip it 👆"
-        )
-
-        cols = st.columns(3)
-
-        for i, card in enumerate(
-            st.session_state.flashcards
-        ):
-
-            term = str(
-                card.get(
-                    "term",
-                    ""
+                ans = st.radio(
+                    f"Select option for Q{i + 1}:",
+                    q["options"],
+                    key=f"radio_q{i}",
+                    label_visibility="collapsed",
+                    index=None
                 )
+
+                user_answers.append(ans)
+
+                st.write("")
+
+            submitted = st.form_submit_button(
+                "Submit Answers"
             )
 
-            definition = str(
-                card.get(
-                    "definition",
-                    ""
-                )
-            )
+        if submitted:
 
-            term_html = (
-                term
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-            )
-
-            definition_html = (
-                definition
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-            )
-
-            card_html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-
-body {{
-    margin: 0;
-    padding: 0;
-    background: transparent;
-}}
-
-.flip-card {{
-    width: 100%;
-    height: 170px;
-    perspective: 1000px;
-}}
-
-.flip-card-inner {{
-    position: relative;
-    width: 100%;
-    height: 100%;
-    transition: transform 0.6s;
-    transform-style: preserve-3d;
-}}
-
-.flip-card:hover .flip-card-inner {{
-    transform: rotateY(180deg);
-}}
-
-.flip-card-front,
-.flip-card-back {{
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    text-align: center;
-    border-radius: 12px;
-    backface-visibility: hidden;
-    font-family: Arial, sans-serif;
-}}
-
-.flip-card-front {{
-    background-color: #2e2e2e;
-    color: white;
-    font-size: 22px;
-    font-weight: bold;
-}}
-
-.flip-card-back {{
-    background-color: #4CAF50;
-    color: white;
-    font-size: 16px;
-    transform: rotateY(180deg);
-}}
-
-</style>
-</head>
-
-<body>
-
-<div class="flip-card">
-
-    <div class="flip-card-inner">
-
-        <div class="flip-card-front">
-            {term_html}
-        </div>
-
-        <div class="flip-card-back">
-            {definition_html}
-        </div>
-
-    </div>
-
-</div>
-
-</body>
-</html>
-"""
-
-            with cols[i % 3]:
-
-                components.html(
-                    card_html,
-                    height=190,
-                    scrolling=False
-                )# ======================================================
-# DISPLAY QUIZ
-# ======================================================
-
-if st.session_state.quiz_data:
-
-    st.markdown("---")
-
-    st.subheader(
-        "📝 Your Interactive Quiz"
-    )
-
-    with st.form(
-        "interactive_quiz_form"
-    ):
-
-        user_answers = []
-
-        for i, q in enumerate(
-            st.session_state.quiz_data
-        ):
+            score = 0
+            wrong = 0
 
             st.markdown(
-                f"**Q{i + 1}: "
-                f"{q['question']}**"
+                "### 📊 Quiz Results"
             )
 
-            ans = st.radio(
-                f"Select option for Q{i + 1}:",
-                q["options"],
-                key=f"radio_q{i}",
-                label_visibility="collapsed",
-                index=None
+            for i, q in enumerate(
+                st.session_state.quiz_data
+            ):
+
+                if user_answers[i] == q["answer"]:
+
+                    score += 1
+
+                    st.success(
+                        f"**Q{i + 1}: Correct!** "
+                        f"({q['answer']})"
+                    )
+
+                elif user_answers[i] is None:
+
+                    wrong += 1
+
+                    st.warning(
+                        f"**Q{i + 1}: Not Answered.** "
+                        f"Correct answer: "
+                        f"'{q['answer']}'"
+                    )
+
+                else:
+
+                    wrong += 1
+
+                    st.error(
+                        f"**Q{i + 1}: Incorrect.** "
+                        f"You chose "
+                        f"'{user_answers[i]}'. "
+                        f"Correct answer: "
+                        f"'{q['answer']}'"
+                    )
+
+            total_questions = len(
+                st.session_state.quiz_data
             )
 
-            user_answers.append(
-                ans
+            st.info(
+                f"**Final Score: {score} Correct, "
+                f"{wrong} Incorrect out of "
+                f"{total_questions}.**"
             )
 
-            st.write("")
+            if st.button(
+                "❌ Close Quiz",
+                key="close_quiz_button"
+            ):
 
-        submitted = st.form_submit_button(
-            "Submit Answers"
-        )
+                st.session_state.quiz_data = None
 
-
-    if submitted:
-
-        score = 0
-        wrong = 0
-
-        st.markdown(
-            "### 📊 Quiz Results"
-        )
-
-        for i, q in enumerate(
-            st.session_state.quiz_data
-        ):
-
-            if user_answers[i] == q["answer"]:
-
-                score += 1
-
-                st.success(
-                    f"**Q{i + 1}: Correct!** "
-                    f"({q['answer']})"
-                )
-
-            elif user_answers[i] is None:
-
-                wrong += 1
-
-                st.warning(
-                    f"**Q{i + 1}: Not Answered.** "
-                    f"Correct answer: "
-                    f"'{q['answer']}'"
-                )
-
-            else:
-
-                wrong += 1
-
-                st.error(
-                    f"**Q{i + 1}: Incorrect.** "
-                    f"You chose "
-                    f"'{user_answers[i]}'. "
-                    f"Correct answer: "
-                    f"'{q['answer']}'"
-                )
-
-        total_questions = len(
-            st.session_state.quiz_data
-        )
-
-        st.info(
-            f"**Final Score: {score} Correct, "
-            f"{wrong} Incorrect out of "
-            f"{total_questions}.**"
-        )
-
-        if st.button(
-            "❌ Close Quiz",
-            key="close_quiz_button"
-        ):
-
-            st.session_state.quiz_data = None
-
-            st.rerun()
-
+                st.rerun()
 # ==========================================================
 # CHAT SETTINGS
 # ==========================================================
