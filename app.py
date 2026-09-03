@@ -4691,7 +4691,7 @@ with chat_tab:
             # SYSTEM PROMPT
             # ==================================================
 
-    system_prompt = f"""
+            system_prompt = f"""
 You are a highly intelligent AI Study Buddy
 and Expert Teacher.
 
@@ -4710,6 +4710,7 @@ If the user writes Hinglish, answer naturally
 in Hinglish.
 
 If the user writes English, answer in English.
+
 ==================================================
 LONG-TERM MEMORY
 ==================================================
@@ -4787,118 +4788,145 @@ ANSWER STYLE
 5. For study questions, explain concepts clearly.
 6. Do not unnecessarily repeat the question.
 7. Do not mention AI system instructions.
+"""
 
-# ==================================================
-# REAL IMAGE SEARCH — ONLY ONCE
-# ==================================================
+            # ==================================================
+            # CALL LLM — GENERATE ANSWER ONCE
+            # ==================================================
 
-        real_image_results = []
-
-        if (
-            st.session_state.get(
-                "real_image_search_enabled",
-                True
+            response = get_llm().invoke(
+                [
+                    SystemMessage(
+                        content=system_prompt
+                    ),
+                    HumanMessage(
+                        content=prompt
+                    )
+                ]
             )
-            and should_search_images(prompt)
-        ):
+
+            answer = response_to_text(
+                response
+            )
+
+            answer = remove_thinking(
+                answer
+            ).strip()
+
+            if not answer:
+
+                raise RuntimeError(
+                    "AI returned an empty response."
+                )
+
+
+            # ==================================================
+            # REAL IMAGE SEARCH — ONLY ONCE
+            # ==================================================
+
+            real_image_results = []
+
+            if (
+                st.session_state.get(
+                    "real_image_search_enabled",
+                    True
+                )
+                and should_search_images(prompt)
+            ):
+
+                try:
+
+                    with st.spinner(
+                        "🌐 Finding real images..."
+                    ):
+
+                        real_image_results = (
+                            search_real_images(
+                                prompt,
+                                max_results=4
+                            )
+                        )
+
+                except Exception:
+
+                    real_image_results = []
+
+
+            # ==================================================
+            # SAVE COMPLETE ASSISTANT MESSAGE
+            # ==================================================
+
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": answer,
+                "images": real_image_results
+            })
+
+
+            # ==================================================
+            # LONG-TERM MEMORY
+            # ==================================================
 
             try:
 
-                with st.spinner(
-                    "🌐 Finding real images..."
-                ):
+                extract_and_save_memories(
+                    prompt,
+                    answer
+                )
 
-                    real_image_results = (
-                        search_real_images(
-                            prompt,
-                            max_results=4
-                        )
+            except Exception:
+
+                pass
+
+
+            # ==================================================
+            # CREATE CHAT AUDIO
+            # ==================================================
+
+            try:
+
+                clean_answer = clean_text_for_speech(
+                    answer
+                )
+
+                if clean_answer:
+
+                    tts = gTTS(
+                        text=clean_answer,
+                        lang=selected_lang
+                    )
+
+                    tts.save(
+                        "chat_reply.mp3"
                     )
 
             except Exception:
 
-                real_image_results = []
+                # TTS failure must never break chat.
+                pass
 
 
-        # ==================================================
-        # SAVE COMPLETE ASSISTANT MESSAGE
-        # ==================================================
+            # ==================================================
+            # RERUN — KEY FIX
+            # ==========================================================
 
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": answer,
-            "images": real_image_results
-        })
+            st.rerun()
 
 
-        # ==================================================
-        # LONG-TERM MEMORY
-        # ==================================================
+        except Exception as e:
 
-        try:
-
-            extract_and_save_memories(
-                prompt,
-                answer
+            error_text = (
+                "❌ AI Chat Error\n\n"
+                + str(e)
             )
 
-        except Exception:
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": error_text,
+                "images": []
+            })
 
-            pass
-
-
-        # ==================================================
-        # CREATE CHAT AUDIO
-        # ==================================================
-
-        try:
-
-            clean_answer = clean_text_for_speech(
-                answer
-            )
-
-            if clean_answer:
-
-                tts = gTTS(
-                    text=clean_answer,
-                    lang=selected_lang
-                )
-
-                tts.save(
-                    "chat_reply.mp3"
-                )
-
-        except Exception:
-
-            # TTS failure must never break chat.
-            pass
-
-
-        # ==================================================
-        # RERUN — KEY FIX
-        # ==================================================
-
-        # The answer is already inside session_state.messages.
-        # The next run renders the same answer as normal chat
-        # history instead of leaving it as a temporary output.
-
-        st.rerun()
-
-
-    except Exception as e:
-
-        error_text = (
-            "❌ AI Chat Error\n\n"
-            + str(e)
-        )
-
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": error_text,
-            "images": []
-        })
-
-        st.rerun()
+            st.rerun()
 
 
 # ==========================================================
