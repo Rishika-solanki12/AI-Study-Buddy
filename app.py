@@ -1855,19 +1855,6 @@ TEXT:
                         != current_image_key
                     ):
 
-                        st.session_state.messages.append({
-                            "role": "user",
-                            "content":
-                            f"📸 User uploaded image: "
-                            f"{img_to_process.name}"
-                        })
-
-                        st.session_state.messages.append({
-                            "role": "assistant",
-                            "content":
-                            image_explanation
-                        })
-
                         st.session_state.analyzed_image_name = (
                             current_image_key
                         )
@@ -1884,7 +1871,6 @@ TEXT:
                     st.sidebar.error(
                         f"❌ Error analyzing image: {e}"
                     )
-
 
 # ==========================================================
 # DOCUMENT STUDY TOOLS
