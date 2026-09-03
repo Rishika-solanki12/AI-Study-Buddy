@@ -4229,342 +4229,470 @@ else:
         "Ask your first question "
         "to start tracking progress!"
     )
+    
+with chat_tab:
 
+    # ==========================================================
+    # MAIN CHAT — FIXED
+    # ==========================================================
+    #
+    # The previous version had:
+    # - chat history rendered BEFORE current-input processing
+    # - the LLM called multiple times
+    # - real-image search called multiple times
+    # - the current response rendered temporarily instead of being
+    #   rendered from session_state after a rerun
+    #
+    # This version:
+    # 1. gets the new question,
+    # 2. generates the answer exactly once,
+    # 3. searches real images at most once,
+    # 4. saves the complete assistant message,
+    # 5. reruns,
+    # 6. renders the complete chat from session_state.
+    #
+    # Result: normal text/search answers, real images, and voice
+    # playback stay attached to the main chat conversation.
 
-# ==========================================================
-# ==========================================================
-# MAIN CHAT — FIXED
-# ==========================================================
-#
-# The previous version had:
-# - chat history rendered BEFORE current-input processing
-# - the LLM called multiple times
-# - real-image search called multiple times
-# - the current response rendered temporarily instead of being
-#   rendered from session_state after a rerun
-#
-# This version:
-# 1. gets the new question,
-# 2. generates the answer exactly once,
-# 3. searches real images at most once,
-# 4. saves the complete assistant message,
-# 5. reruns,
-# 6. renders the complete chat from session_state.
-#
-# Result: normal text/search answers, real images, and voice
-# playback stay attached to the main chat conversation.
+    st.sidebar.markdown("---")
 
-st.sidebar.markdown("---")
+    st.subheader("💬 Chat with your Study Buddy")
 
-st.subheader("💬 Chat with your Study Buddy")
+    # ==========================================================
+    # DISPLAY COMPLETE CHAT HISTORY
+    # ==========================================================
 
+    for message in st.session_state.messages:
 
-# ==========================================================
-# COMBINED INPUT
-# ==========================================================
-
-st.markdown(
-    """
-    <style>
-    .combined-input-wrapper {
-        width: 100%;
-        border: 1px solid #d1d5db;
-        border-top: none !important;
-        border-radius: 16px;
-        padding: 8px;
-        background: #ffffff;
-        box-shadow: 0px 2px 8px rgba(0,0,0,0.08);
-        margin-top: 8px;
-        margin-bottom: 15px;
-    }
-
-    div[data-testid="stAudioInput"] {
-        margin-bottom: 0 !important;
-    }
-
-    div[data-testid="stAudioInput"] > div {
-        border-radius: 12px !important;
-    }
-
-    @media (max-width: 768px) {
-        .combined-input-wrapper {
-            border-radius: 14px;
-            padding: 6px;
-        }
-
-        div[data-testid="stAudioInput"] button {
-            min-height: 45px !important;
-        }
-
-        div[data-testid="stChatInput"] {
-            margin-bottom: 5px !important;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .combined-input-wrapper {
-            padding: 5px;
-            border-radius: 12px;
-        }
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.write("🎤 **Ask your Study Buddy by voice or text:**")
-
-input_container = st.container()
-
-with input_container:
-
-    st.markdown(
-        '<div class="combined-input-wrapper">',
-        unsafe_allow_html=True
-    )
-
-    input_col1, input_col2 = st.columns(
-        [1.2, 8.8],
-        gap="small"
-    )
-
-    with input_col1:
-        audio = st.audio_input(
-            "",
-            key="my_voice_mic",
-            label_visibility="collapsed"
+        role = message.get(
+            "role",
+            "assistant"
         )
 
-    with input_col2:
-        text_input = st.chat_input(
-            "Ask your question..."
-        )
+        with st.chat_message(role):
 
-    st.markdown(
-        "</div>",
-        unsafe_allow_html=True
-    )
+            content = remove_thinking(
+                str(
+                    message.get(
+                        "content",
+                        ""
+                    )
+                )
+            )
+
+            if content:
+
+                st.markdown(
+                    content
+                )
+
+            # ==================================================
+            # REAL IMAGES INSIDE THE SAME ASSISTANT MESSAGE
+            # ==================================================
+
+            images = message.get(
+                "images",
+                []
+            )
+
+            if images:
+
+                st.markdown(
+                    "### 🖼️ Related Real Images"
+                )
+
+                columns = st.columns(2)
+
+                for i, image_data in enumerate(
+                    images
+                ):
+
+                    with columns[i % 2]:
+
+                        try:
+
+                            image_bytes = (
+                                image_data.get(
+                                    "image"
+                                )
+                            )
+
+                            if image_bytes:
+
+                                st.image(
+                                    image_bytes,
+                                    use_container_width=True
+                                )
+
+                            title = image_data.get(
+                                "title",
+                                "Related Image"
+                            )
+
+                            if title:
+
+                                st.caption(
+                                    title
+                                )
+
+                            source_url = image_data.get(
+                                "source",
+                                ""
+                            )
+
+                            if source_url:
+
+                                st.markdown(
+                                    f"[🔗 Open original source]({source_url})"
+                                )
+
+                        except Exception as image_error:
+
+                            print(
+                                "Image display error:",
+                                image_error
+                            )
 
 
-# ==========================================================
-# VOICE INPUT
-# ==========================================================
+    # ==========================================================
+    # PLAY LAST CHAT RESPONSE
+    # ==========================================================
 
-voice_input = None
-
-if audio is not None:
-
-    audio_bytes = audio.getvalue()
-
-    current_audio_id = hash(audio_bytes)
-
-    if current_audio_id != st.session_state.get(
-        "last_audio_id"
+    if (
+        st.session_state.messages
+        and
+        st.session_state.messages[-1].get(
+            "role"
+        ) == "assistant"
     ):
 
-        st.session_state.last_audio_id = current_audio_id
-
-        st.info(
-            "🔄 Your voice is being processed..."
+        last_answer = clean_text_for_speech(
+            st.session_state.messages[-1].get(
+                "content",
+                ""
+            )
         )
 
-        try:
+        if (
+            last_answer
+            and
+            Path("chat_reply.mp3").exists()
+        ):
 
-            client = Groq(
-                api_key=get_groq_api_key()
+            st.audio(
+                "chat_reply.mp3",
+                format="audio/mp3"
             )
 
-            transcription = (
-                client.audio.transcriptions.create(
-                    file=(
-                        "audio.wav",
-                        audio_bytes
-                    ),
-                    model="whisper-large-v3",
-                    response_format="text"
-                )
+
+    # ==========================================================
+    # COMBINED INPUT
+    # ==========================================================
+
+    st.markdown(
+        """
+        <style>
+        .combined-input-wrapper {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-top: none !important;
+            border-radius: 16px;
+            padding: 8px;
+            background: #ffffff;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.08);
+            margin-top: 8px;
+            margin-bottom: 15px;
+        }
+
+        div[data-testid="stAudioInput"] {
+            margin-bottom: 0 !important;
+        }
+
+        div[data-testid="stAudioInput"] > div {
+            border-radius: 12px !important;
+        }
+
+        @media (max-width: 768px) {
+            .combined-input-wrapper {
+                border-radius: 14px;
+                padding: 6px;
+            }
+
+            div[data-testid="stAudioInput"] button {
+                min-height: 45px !important;
+            }
+
+            div[data-testid="stChatInput"] {
+                margin-bottom: 5px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .combined-input-wrapper {
+                padding: 5px;
+                border-radius: 12px;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.write("🎤 **Ask your Study Buddy by voice or text:**")
+
+    input_container = st.container()
+
+    with input_container:
+
+        st.markdown(
+            '<div class="combined-input-wrapper">',
+            unsafe_allow_html=True
+        )
+
+        input_col1, input_col2 = st.columns(
+            [1.2, 8.8],
+            gap="small"
+        )
+
+        with input_col1:
+
+            audio = st.audio_input(
+                "",
+                key="my_voice_mic",
+                label_visibility="collapsed"
             )
 
-            voice_input = str(
-                transcription
-            ).strip()
+        with input_col2:
 
-            if voice_input:
+            text_input = st.chat_input(
+                "Ask your question..."
+            )
 
-                st.success(
-                    "✅ Voice understood!"
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True
+        )
+
+
+    # ==========================================================
+    # VOICE INPUT
+    # ==========================================================
+
+    voice_input = None
+
+    if audio is not None:
+
+        audio_bytes = audio.getvalue()
+
+        current_audio_id = hash(audio_bytes)
+
+        if current_audio_id != st.session_state.get(
+            "last_audio_id"
+        ):
+
+            st.session_state.last_audio_id = current_audio_id
+
+            st.info(
+                "🔄 Your voice is being processed..."
+            )
+
+            try:
+
+                client = Groq(
+                    api_key=get_groq_api_key()
                 )
 
-            else:
+                transcription = (
+                    client.audio.transcriptions.create(
+                        file=(
+                            "audio.wav",
+                            audio_bytes
+                        ),
+                        model="whisper-large-v3",
+                        response_format="text"
+                    )
+                )
 
-                st.warning(
-                    "⚠️ Voice samajh nahi aayi. "
-                    "Please try recording again."
+                voice_input = str(
+                    transcription
+                ).strip()
+
+                if voice_input:
+
+                    st.success(
+                        "✅ Voice understood!"
+                    )
+
+                else:
+
+                    st.warning(
+                        "⚠️ Voice samajh nahi aayi. "
+                        "Please try recording again."
+                    )
+
+                    voice_input = None
+
+            except Exception as e:
+
+                st.error(
+                    f"❌ Audio processing error: {e}"
                 )
 
                 voice_input = None
 
-        except Exception as e:
 
-            st.error(
-                f"❌ Audio processing error: {e}"
+    # ==========================================================
+    # FINAL PROMPT
+    # ==========================================================
+
+    prompt = (
+        text_input
+        if text_input
+        else voice_input
+    )
+
+
+    # ==========================================================
+    # PROCESS NEW MESSAGE FIRST
+    # ==========================================================
+
+    if prompt:
+
+        prompt = str(prompt).strip()
+
+        if not prompt:
+
+            st.warning(
+                "Please enter a question."
             )
 
-            voice_input = None
+            st.stop()
 
 
-# ==========================================================
-# FINAL PROMPT
-# ==========================================================
+        # ======================================================
+        # SAVE USER MESSAGE
+        # ======================================================
 
-prompt = (
-    text_input
-    if text_input
-    else voice_input
-)
+        st.session_state.messages.append({
+            "role": "user",
+            "content": prompt
+        })
 
-
-# ==========================================================
-# PROCESS NEW MESSAGE FIRST
-# ==========================================================
-
-if prompt:
-
-    prompt = str(prompt).strip()
-
-    if not prompt:
-
-        st.warning(
-            "Please enter a question."
-        )
-
-        st.stop()
-
-
-    # ======================================================
-    # SAVE USER MESSAGE
-    # ======================================================
-
-    st.session_state.messages.append({
-        "role": "user",
-        "content": prompt
-    })
-
-
-    try:
-
-        # ==================================================
-        # MEMORY
-        # ==================================================
 
         try:
 
-            memory_context = get_memory_context(
-                prompt,
-                max_memories=8
-            )
-
-        except Exception:
-
-            memory_context = (
-                "No long-term memory is available "
-                "for this user."
-            )
-
-
-        # ==================================================
-        # DOCUMENT RETRIEVAL
-        # ==================================================
-
-        document_context = ""
-
-        if st.session_state.vector_store is not None:
+            # ==================================================
+            # MEMORY
+            # ==================================================
 
             try:
 
-                docs = (
-                    st.session_state.vector_store
-                    .similarity_search(
-                        prompt,
-                        k=5
-                    )
+                memory_context = get_memory_context(
+                    prompt,
+                    max_memories=8
                 )
 
-                if docs:
+            except Exception:
 
-                    document_context = "\n\n".join(
-                        str(doc.page_content)
-                        for doc in docs
-                        if getattr(
-                            doc,
-                            "page_content",
-                            None
+                memory_context = (
+                    "No long-term memory is available "
+                    "for this user."
+                )
+
+
+            # ==================================================
+            # DOCUMENT RETRIEVAL
+            # ==================================================
+
+            document_context = ""
+
+            if st.session_state.vector_store is not None:
+
+                try:
+
+                    docs = (
+                        st.session_state.vector_store
+                        .similarity_search(
+                            prompt,
+                            k=5
                         )
+                    )
+
+                    if docs:
+
+                        document_context = "\n\n".join(
+                            str(doc.page_content)
+                            for doc in docs
+                            if getattr(
+                                doc,
+                                "page_content",
+                                None
+                            )
+                        )
+
+                except Exception:
+
+                    document_context = ""
+
+
+            # ==================================================
+            # WEB SEARCH
+            # ==================================================
+
+            web_context = ""
+
+            try:
+
+                search_results = []
+
+                with DDGS() as ddgs:
+
+                    results = ddgs.text(
+                        prompt,
+                        max_results=5
+                    )
+
+                    for result in results:
+
+                        title = result.get(
+                            "title",
+                            ""
+                        )
+
+                        body = result.get(
+                            "body",
+                            ""
+                        )
+
+                        href = result.get(
+                            "href",
+                            ""
+                        )
+
+                        if title or body:
+
+                            search_results.append(
+                                f"TITLE: {title}\n"
+                                f"CONTENT: {body}\n"
+                                f"SOURCE: {href}"
+                            )
+
+                if search_results:
+
+                    web_context = "\n\n".join(
+                        search_results
                     )
 
             except Exception:
 
-                document_context = ""
+                web_context = ""
 
 
-        # ==================================================
-        # WEB SEARCH
-        # ==================================================
+            # ==================================================
+            # SYSTEM PROMPT
+            # ==================================================
 
-        web_context = ""
-
-        try:
-
-            search_results = []
-
-            with DDGS() as ddgs:
-
-                results = ddgs.text(
-                    prompt,
-                    max_results=5
-                )
-
-                for result in results:
-
-                    title = result.get(
-                        "title",
-                        ""
-                    )
-
-                    body = result.get(
-                        "body",
-                        ""
-                    )
-
-                    href = result.get(
-                        "href",
-                        ""
-                    )
-
-                    if title or body:
-
-                        search_results.append(
-                            f"TITLE: {title}\n"
-                            f"CONTENT: {body}\n"
-                            f"SOURCE: {href}"
-                        )
-
-            if search_results:
-
-                web_context = "\n\n".join(
-                    search_results
-                )
-
-        except Exception:
-
-            web_context = ""
-
-
-        # ==================================================
-        # SYSTEM PROMPT
-        # ==================================================
-
-        system_prompt = f"""
+            system_prompt = f"""
 You are a highly intelligent AI Study Buddy
 and Expert Teacher.
 
@@ -4583,7 +4711,6 @@ If the user writes Hinglish, answer naturally
 in Hinglish.
 
 If the user writes English, answer in English.
-
 ==================================================
 LONG-TERM MEMORY
 ==================================================
@@ -4836,133 +4963,6 @@ The user must see only the final answer.
 
         st.rerun()
 
-
-# ==========================================================
-# DISPLAY COMPLETE CHAT HISTORY
-# ==========================================================
-
-for message in st.session_state.messages:
-
-    role = message.get(
-        "role",
-        "assistant"
-    )
-
-    with st.chat_message(role):
-
-        content = remove_thinking(
-            str(
-                message.get(
-                    "content",
-                    ""
-                )
-            )
-        )
-
-        if content:
-
-            st.markdown(
-                content
-            )
-
-
-        # ==================================================
-        # REAL IMAGES INSIDE THE SAME ASSISTANT MESSAGE
-        # ==================================================
-
-        images = message.get(
-            "images",
-            []
-        )
-
-        if images:
-
-            st.markdown(
-                "### 🖼️ Related Real Images"
-            )
-
-            columns = st.columns(2)
-
-            for i, image_data in enumerate(
-                images
-            ):
-
-                with columns[i % 2]:
-
-                    try:
-
-                        image_bytes = (
-                            image_data.get(
-                                "image"
-                            )
-                        )
-
-                        if image_bytes:
-
-                            st.image(
-                                image_bytes,
-                                use_container_width=True
-                            )
-
-                        title = image_data.get(
-                            "title",
-                            "Related Image"
-                        )
-
-                        if title:
-
-                            st.caption(
-                                title
-                            )
-
-                        source_url = image_data.get(
-                            "source",
-                            ""
-                        )
-
-                        if source_url:
-
-                            st.markdown(
-                                f"[🔗 Open original source]({source_url})"
-                            )
-
-                    except Exception as image_error:
-
-                        print(
-                            "Image display error:",
-                            image_error
-                        )
-
-
-# ==========================================================
-# PLAY LAST CHAT RESPONSE
-# ==========================================================
-
-if (
-    st.session_state.messages
-    and
-    st.session_state.messages[-1].get(
-        "role"
-    ) == "assistant"
-):
-
-    last_answer = clean_text_for_speech(
-        st.session_state.messages[-1].get(
-            "content",
-            ""
-        )
-    )
-
-    if (
-        last_answer
-        and
-        Path("chat_reply.mp3").exists()
-    ):
-
-        st.audio(
-            "chat_reply.mp3",
-            format="audio/mp3"
-        )
 
 # ==========================================================
 # MEMORY SIDEBAR
