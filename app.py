@@ -1647,7 +1647,7 @@ if image_files:
         )
         image_sentence_count = st.sidebar.selectbox(
             "📝 Image Explanation Length:",
-            list(range(1, 11)),
+            list(range(1, 30)),
             index=2,
             key="image_sentence_count"
         )
