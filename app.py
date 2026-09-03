@@ -4579,20 +4579,20 @@ with chat_tab:
         })
 
 
-        try:
+        
 
             # ==================================================
             # MEMORY
             # ==================================================
 
-            try:
+    try:
 
                 memory_context = get_memory_context(
                     prompt,
                     max_memories=8
                 )
 
-            except Exception:
+    except Exception:
 
                 memory_context = (
                     "No long-term memory is available "
@@ -4604,9 +4604,8 @@ with chat_tab:
             # DOCUMENT RETRIEVAL
             # ==================================================
 
-            document_context = ""
-
-            if st.session_state.vector_store is not None:
+    document_context = ""
+    if st.session_state.vector_store is not None:
 
                 try:
 
@@ -4639,9 +4638,9 @@ with chat_tab:
             # WEB SEARCH
             # ==================================================
 
-            web_context = ""
+    web_context = ""
 
-            try:
+    try:
 
                 search_results = []
 
@@ -4683,7 +4682,7 @@ with chat_tab:
                         search_results
                     )
 
-            except Exception:
+    except Exception:
 
                 web_context = ""
 
@@ -4692,7 +4691,7 @@ with chat_tab:
             # SYSTEM PROMPT
             # ==================================================
 
-            system_prompt = f"""
+    system_prompt = f"""
 You are a highly intelligent AI Study Buddy
 and Expert Teacher.
 
@@ -4820,9 +4819,9 @@ The user must see only the final answer.
         # REAL IMAGE SEARCH — ONLY ONCE
         # ==================================================
 
-        real_image_results = []
+real_image_results = []
 
-        if (
+if (
             st.session_state.get(
                 "real_image_search_enabled",
                 True
@@ -4881,10 +4880,8 @@ The user must see only the final answer.
 
         try:
 
-            clean_answer = (
-                clean_text_for_speech(
-                    answer
-                )
+            clean_answer = clean_text_for_speech(
+                answer
             )
 
             if clean_answer:
@@ -4946,8 +4943,7 @@ current_memories = load_all_memories()
 if current_memories:
 
     st.sidebar.success(
-        f"🧠 {len(current_memories)} "
-        f"memory item(s) saved"
+        f"🧠 {len(current_memories)} memory item(s) saved"
     )
 
 else:
