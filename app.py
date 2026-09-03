@@ -39,6 +39,9 @@ if "HF_TOKEN" in st.secrets:
 
 
 # ==========================================================
+# baaki tumhara code
+# ==========================================================
+# ==========================================================
 # PAGE CONFIG
 # ==========================================================
 
@@ -54,16 +57,6 @@ st.set_option(
 )
 
 
-st.markdown("""
-<style>
-[data-baseweb="tab-list"] button[data-baseweb="tab"] div,
-[data-baseweb="tab-list"] button[data-baseweb="tab"] span,
-[data-baseweb="tab-list"] button[data-baseweb="tab"] p {
-    font-size: 24px !important;
-    font-weight: 700 !important;
-}
-</style>
-""", unsafe_allow_html=True)
 # ==========================================================
 # CSS
 # ==========================================================
@@ -297,7 +290,6 @@ def response_to_text(response):
 # ==========================================================
 
 def remove_thinking(text):
-
     if not text:
         return ""
 
@@ -1180,13 +1172,345 @@ st.write(
     "Upload your study material and search concepts instantly!"
 )
 
+
 # ==========================================================
-# MAIN APP TABS
+# IMAGE GENERATION
 # ==========================================================
 
-files_tab, chat_tab = st.tabs(
-    ["📁 Files & Study", "💬 Main Chat"]
+st.sidebar.markdown("---")
+
+st.sidebar.header(
+    "🎨 Image Generation"
 )
+
+st.sidebar.caption(
+    "Create an educational image using AI"
+)
+
+image_generation_prompt = st.sidebar.text_area(
+    "📝 Describe the image you want:",
+    placeholder=(
+        "Example: Draw a simple labeled diagram "
+        "of the human heart for a school student."
+    ),
+    height=100,
+    key="image_generation_prompt"
+)
+
+generate_image_button = st.sidebar.button(
+    "🎨 Generate Image",
+    use_container_width=True,
+    key="generate_image_button"
+)
+
+
+def get_hf_token():
+
+    try:
+
+        token = st.secrets.get(
+            "HF_TOKEN",
+            ""
+        )
+
+    except Exception:
+
+        token = ""
+
+    if not token:
+
+        raise RuntimeError(
+            "HF_TOKEN is missing. "
+            "Please add HF_TOKEN to Streamlit Secrets."
+        )
+
+    return str(token).strip()
+
+
+def generate_ai_image(prompt):
+
+    token = get_hf_token()
+
+    client = InferenceClient(
+        provider="auto",
+        api_key=token,
+        timeout=120
+    )
+
+    image = client.text_to_image(
+        prompt=prompt,
+        model="black-forest-labs/FLUX.1-schnell"
+    )
+
+    return image
+
+# ==========================================================
+# REAL IMAGE SEARCH FUNCTION
+# ==========================================================
+
+def search_real_images(query, max_results=4):
+
+    try:
+
+        results = []
+
+        with DDGS() as ddgs:
+
+            image_results = ddgs.images(
+                query,
+                max_results=max_results,
+                safesearch="moderate"
+            )
+
+            for item in image_results:
+
+                image_url = item.get(
+                    "image",
+                    ""
+                )
+
+                thumbnail_url = item.get(
+                    "thumbnail",
+                    ""
+                )
+
+                source_url = item.get(
+                    "url",
+                    ""
+                )
+
+                title = item.get(
+                    "title",
+                    "Related Image"
+                )
+
+                # ==========================================
+                # DOWNLOAD IMAGE DIRECTLY
+                # ==========================================
+
+                image_data = None
+
+                for url in [
+                    image_url,
+                    thumbnail_url
+                ]:
+
+                    if not url:
+                        continue
+
+                    try:
+
+                        response = requests.get(
+                            url,
+                            timeout=10,
+                            headers={
+                                "User-Agent":
+                                "Mozilla/5.0"
+                            }
+                        )
+
+                        if (
+                            response.status_code == 200
+                            and response.content
+                        ):
+
+                            image_data = (
+                                response.content
+                            )
+
+                            break
+
+                    except Exception:
+
+                        continue
+
+                # ==========================================
+                # SAVE RESULT
+                # ==========================================
+
+                if image_data:
+
+                    results.append({
+                        "image": image_data,
+                        "source": source_url,
+                        "title": title
+                    })
+
+        return results
+
+    except Exception as e:
+
+        print(
+            "Real image search error:",
+            e
+        )
+
+        return []
+# ==========================================================
+# IMAGE SEARCH DECISION
+# ==========================================================
+
+def should_search_images(prompt):
+
+    prompt_lower = prompt.lower()
+
+    image_keywords = [
+
+        "image",
+        "images",
+        "photo",
+        "picture",
+        "pic",
+        "show me",
+        "dikhao",
+        "tasveer",
+        "चित्र",
+        "फोटो",
+        "इमेज",
+
+        "diagram",
+        "diagram of",
+        "labeled diagram",
+
+        "map",
+        "location",
+
+        "what does it look like",
+        "looks like",
+        "kaisa dikhta",
+        "kaisi dikhti",
+
+        "human heart",
+        "heart anatomy",
+        "brain",
+        "human brain",
+        "cell",
+        "plant cell",
+        "animal cell",
+        "solar system",
+        "planet",
+        "earth",
+        "moon",
+        "atom",
+        "molecule",
+        "dna",
+        "skeleton",
+        "human body",
+        "digestive system",
+        "respiratory system",
+        "photosynthesis"
+    ]
+
+    return any(
+        keyword in prompt_lower
+        for keyword in image_keywords
+    )
+
+if generate_image_button:
+
+    if not image_generation_prompt.strip():
+
+        st.sidebar.warning(
+            "⚠️ Please enter an image description first."
+        )
+
+    else:
+
+        with st.spinner(
+            "🎨 AI is generating your image..."
+        ):
+
+            try:
+
+                generated_image = generate_ai_image(
+                    image_generation_prompt.strip()
+                )
+
+                st.session_state.generated_ai_image = (
+                    generated_image
+                )
+
+                st.session_state.generated_ai_image_prompt = (
+                    image_generation_prompt.strip()
+                )
+
+                st.success(
+                    "✅ Image generated successfully!"
+                )
+
+            except Exception as e:
+
+                error_text = str(e)
+
+                if (
+                    "credit" in error_text.lower()
+                    or
+                    "billing" in error_text.lower()
+                    or
+                    "payment" in error_text.lower()
+                ):
+
+                    st.sidebar.error(
+                        "❌ Hugging Face free inference "
+                        "credits are unavailable/exhausted."
+                    )
+
+                else:
+
+                    st.sidebar.error(
+                        f"❌ Image generation failed: {e}"
+                    )
+
+
+# ==========================================================
+# DISPLAY GENERATED IMAGE
+# ==========================================================
+
+if st.session_state.get(
+    "generated_ai_image"
+) is not None:
+
+    st.sidebar.markdown("---")
+
+    st.sidebar.subheader(
+        "🖼️ Generated Image"
+    )
+
+    st.sidebar.image(
+        st.session_state.generated_ai_image,
+        use_container_width=True
+    )
+
+    image_bytes = None
+
+    try:
+
+        from io import BytesIO
+
+        image_buffer = BytesIO()
+
+        st.session_state.generated_ai_image.save(
+            image_buffer,
+            format="PNG"
+        )
+
+        image_bytes = image_buffer.getvalue()
+
+    except Exception:
+        image_bytes = None
+
+
+    if image_bytes:
+
+        st.sidebar.download_button(
+            label="⬇️ Download Image",
+            data=image_bytes,
+            file_name="AI_Study_Buddy_Generated_Image.png",
+            mime="image/png",
+            use_container_width=True,
+            key="download_generated_ai_image"
+        )
+
 
 # ==========================================================
 # SIDEBAR UPLOAD
@@ -1855,6 +2179,19 @@ TEXT:
                         != current_image_key
                     ):
 
+                        st.session_state.messages.append({
+                            "role": "user",
+                            "content":
+                            f"📸 User uploaded image: "
+                            f"{img_to_process.name}"
+                        })
+
+                        st.session_state.messages.append({
+                            "role": "assistant",
+                            "content":
+                            image_explanation
+                        })
+
                         st.session_state.analyzed_image_name = (
                             current_image_key
                         )
@@ -1871,6 +2208,7 @@ TEXT:
                     st.sidebar.error(
                         f"❌ Error analyzing image: {e}"
                     )
+
 
 # ==========================================================
 # DOCUMENT STUDY TOOLS
@@ -1966,6 +2304,7 @@ in the uploaded study material.
     else:
 
         exam_instruction = ""
+
 
     # ======================================================
     # EXPLAIN DOCUMENT BUTTON
@@ -2276,239 +2615,240 @@ Never reveal:
 
                 st.error(
                     f"❌ Document explanation error: {e}"
-                )  
-with files_tab:
+                )
 
-    # ==========================================================
-    # CURRENT READER SOURCE
-    # ==========================================================
 
-    reader_source_text = None
-    reader_source_type = None
+    
+# ==========================================================
+# CURRENT READER SOURCE
+# ==========================================================
 
-    if st.session_state.get(
-        "document_explanation"
-    ):
+reader_source_text = None
+reader_source_type = None
 
-        reader_source_text = (
+if st.session_state.get(
+    "document_explanation"
+):
+
+    reader_source_text = (
+        st.session_state.document_explanation
+    )
+
+    reader_source_type = "Document"
+
+elif st.session_state.get(
+    "image_explanation"
+):
+
+    reader_source_text = (
+        st.session_state.image_explanation
+    )
+
+    reader_source_type = "Image"
+
+
+# ==========================================================
+# DISPLAY DOCUMENT
+# ==========================================================
+
+if st.session_state.get(
+    "document_explanation"
+):
+
+    st.markdown("---")
+
+    st.subheader(
+        "📚 AI Document Explanation"
+    )
+
+    st.caption(
+        f"Language: {translation_language}"
+    )
+
+    st.markdown(
+        remove_thinking(
             st.session_state.document_explanation
         )
+    )
 
-        reader_source_type = "Document"
 
-    elif st.session_state.get(
-        "image_explanation"
-    ):
+# ==========================================================
+# DISPLAY IMAGE
+# ==========================================================
 
-        reader_source_text = (
+if st.session_state.get(
+    "image_explanation"
+):
+
+    st.markdown("---")
+
+    st.subheader(
+        "🖼️ AI Image Explanation"
+    )
+
+    st.caption(
+        f"Language: {translation_language}"
+    )
+
+    st.markdown(
+        remove_thinking(
             st.session_state.image_explanation
         )
+    )
 
-        reader_source_type = "Image"
 
+# ==========================================================
+# COMMON SMART READER
+# ==========================================================
 
-    # ==========================================================
-    # DISPLAY DOCUMENT
-    # ==========================================================
+if reader_source_text:
 
-    if st.session_state.get(
-        "document_explanation"
+    st.markdown("---")
+
+    st.subheader(
+        f"🔊📖 Smart Reader — {reader_source_type}"
+    )
+
+    st.caption(
+        f"Reading language: {listen_language}"
+    )
+
+    if reader_source_type == "Image":
+
+        cached_text = (
+            st.session_state.image_speaker_text
+        )
+
+        cached_language = (
+            st.session_state.image_speaker_text_language
+        )
+
+    else:
+
+        cached_text = (
+            st.session_state.document_speaker_text
+        )
+
+        cached_language = (
+            st.session_state.document_speaker_text_language
+        )
+
+    if listen_language == translation_language:
+
+        speech_text = clean_text_for_speech(
+            reader_source_text
+        )
+
+    elif (
+        cached_text
+        and
+        cached_language == listen_language
     ):
 
-        st.markdown("---")
+        speech_text = cached_text
 
-        st.subheader(
-            "📚 AI Document Explanation"
-        )
+    else:
 
-        st.caption(
-            f"Language: {translation_language}"
-        )
+        speech_text = ""
 
-        st.markdown(
-            remove_thinking(
-                st.session_state.document_explanation
+        if st.button(
+            f"🌐 Prepare {listen_language} Reading",
+            key=(
+                f"prepare_reader_translation_"
+                f"{reader_source_type}"
             )
-        )
-
-
-    # ==========================================================
-    # DISPLAY IMAGE
-    # ==========================================================
-
-    if st.session_state.get(
-        "image_explanation"
-    ):
-
-        st.markdown("---")
-
-        st.subheader(
-            "🖼️ AI Image Explanation"
-        )
-
-        st.caption(
-            f"Language: {translation_language}"
-        )
-
-        st.markdown(
-            remove_thinking(
-                st.session_state.image_explanation
-            )
-        )
-
-
-    # ==========================================================
-    # COMMON SMART READER
-    # ==========================================================
-
-    if reader_source_text:
-
-        st.markdown("---")
-
-        st.subheader(
-            f"🔊📖 Smart Reader — {reader_source_type}"
-        )
-
-        st.caption(
-            f"Reading language: {listen_language}"
-        )
-
-        if reader_source_type == "Image":
-
-            cached_text = (
-                st.session_state.image_speaker_text
-            )
-
-            cached_language = (
-                st.session_state.image_speaker_text_language
-            )
-
-        else:
-
-            cached_text = (
-                st.session_state.document_speaker_text
-            )
-
-            cached_language = (
-                st.session_state.document_speaker_text_language
-            )
-
-        if listen_language == translation_language:
-
-            speech_text = clean_text_for_speech(
-                reader_source_text
-            )
-
-        elif (
-            cached_text
-            and
-            cached_language == listen_language
         ):
 
-            speech_text = cached_text
-
-        else:
-
-            speech_text = ""
-
-            if st.button(
-                f"🌐 Prepare {listen_language} Reading",
-                key=(
-                    f"prepare_reader_translation_"
-                    f"{reader_source_type}"
-                )
+            with st.spinner(
+                f"🌐 Translating into "
+                f"{listen_language}..."
             ):
 
-                with st.spinner(
-                    f"🌐 Translating into "
-                    f"{listen_language}..."
-                ):
+                try:
 
-                    try:
+                    translated_text = (
+                        translate_for_speech(
+                            reader_source_text,
+                            listen_language
+                        )
+                    )
 
-                        translated_text = (
-                            translate_for_speech(
-                                reader_source_text,
-                                listen_language
-                            )
+                    if not translated_text:
+
+                        raise ValueError(
+                            "Translation returned empty text."
                         )
 
-                        if not translated_text:
+                    if reader_source_type == "Image":
 
-                            raise ValueError(
-                                "Translation returned empty text."
-                            )
-
-                        if reader_source_type == "Image":
-
-                            st.session_state.image_speaker_text = (
-                                translated_text
-                            )
-
-                            st.session_state.image_speaker_text_language = (
-                                listen_language
-                            )
-
-                        else:
-
-                            st.session_state.document_speaker_text = (
-                                translated_text
-                            )
-
-                            st.session_state.document_speaker_text_language = (
-                                listen_language
-                            )
-
-                        st.session_state.speaker_text = (
+                        st.session_state.image_speaker_text = (
                             translated_text
                         )
 
-                        st.session_state.speaker_text_language = (
+                        st.session_state.image_speaker_text_language = (
                             listen_language
                         )
 
-                        st.success(
-                            f"✅ {listen_language} reading ready!"
+                    else:
+
+                        st.session_state.document_speaker_text = (
+                            translated_text
                         )
 
-                        st.rerun()
-
-                    except Exception as e:
-
-                        st.error(
-                            f"❌ Translation error: {e}"
+                        st.session_state.document_speaker_text_language = (
+                            listen_language
                         )
 
+                    st.session_state.speaker_text = (
+                        translated_text
+                    )
 
-        # ======================================================
-        # SMART READER
-        # ======================================================
+                    st.session_state.speaker_text_language = (
+                        listen_language
+                    )
 
-        if speech_text:
+                    st.success(
+                        f"✅ {listen_language} reading ready!"
+                    )
 
-            sentences = re.split(
-                r'(?<=[.!?।॥])\s+',
-                speech_text
-            )
+                    st.rerun()
 
-            sentences = [
-                sentence.strip()
-                for sentence in sentences
-                if sentence.strip()
+                except Exception as e:
+
+                    st.error(
+                        f"❌ Translation error: {e}"
+                    )
+
+
+    # ======================================================
+    # SMART READER
+    # ======================================================
+
+    if speech_text:
+
+        sentences = re.split(
+            r'(?<=[.!?।॥])\s+',
+            speech_text
+        )
+
+        sentences = [
+            sentence.strip()
+            for sentence in sentences
+            if sentence.strip()
+        ]
+
+        sentences_json = json.dumps(
+            sentences,
+            ensure_ascii=False
+        )
+
+        language_code = (
+            SPEAKER_LANGUAGE_CODES[
+                listen_language
             ]
+        )
 
-            sentences_json = json.dumps(
-                sentences,
-                ensure_ascii=False
-            )
-
-            language_code = (
-                SPEAKER_LANGUAGE_CODES[
-                    listen_language
-                ]
-            )
-
-            reader_html = """
+        reader_html = """
 <!DOCTYPE html>
 <html>
 
@@ -2886,34 +3226,33 @@ function stopReader() {
 </html>
 """
 
-            reader_html = reader_html.replace(
-                "__SENTENCES__",
-                sentences_json
-            )
+        reader_html = reader_html.replace(
+            "__SENTENCES__",
+            sentences_json
+        )
 
-            reader_html = reader_html.replace(
-                "__LANGUAGE__",
-                language_code
-            )
+        reader_html = reader_html.replace(
+            "__LANGUAGE__",
+            language_code
+        )
 
-            components.html(
-                reader_html,
-                height=600,
-                scrolling=True
-            )
+        components.html(
+            reader_html,
+            height=600,
+            scrolling=True
+        )
 
 
 # ==========================================================
-
 # SMART STUDY TOOLS
-
 # ==========================================================
 
 st.sidebar.markdown("---")
 
 st.sidebar.subheader(
-"🧠 Smart Study Tools"
+    "🧠 Smart Study Tools"
 )
+
 
 # ==========================================================
 # QUIZ
@@ -2926,6 +3265,7 @@ num_questions = st.sidebar.slider(
     value=5,
     key="quiz_question_count"
 )
+
 
 if st.sidebar.button(
     "📝 Generate MCQ Quiz",
@@ -2965,25 +3305,25 @@ STUDY MATERIAL:
 Return ONLY valid JSON:
 
 [
-{{
+  {{
     "question": "Question",
     "options": [
-        "Option A",
-        "Option B",
-        "Option C",
-        "Option D"
+      "Option A",
+      "Option B",
+      "Option C",
+      "Option D"
     ],
     "answer": "Correct option"
-}}
+  }}
 ]
 
 Rules:
 
-* Exactly {num_questions} questions.
-* Exactly 4 options.
-* Answer must exactly match one option.
-* No markdown.
-* No explanation.
+- Exactly {num_questions} questions.
+- Exactly 4 options.
+- Answer must exactly match one option.
+- No markdown.
+- No explanation.
 """
 
                 raw_text = ask_llm(
@@ -3004,6 +3344,7 @@ Rules:
                     quiz_data,
                     list
                 ):
+
                     raise ValueError(
                         "Quiz response is not a list."
                     )
@@ -3105,7 +3446,6 @@ if st.sidebar.button(
 Create a highly structured study summary.
 
 TARGET LANGUAGE:
-
 {translation_language}
 
 {get_language_instruction(translation_language)}
@@ -3116,26 +3456,24 @@ MATERIAL:
 
 Requirements:
 
-* Clear headings
-* Bullet points
-* Important definitions
-* Important concepts
-* Exam-focused points
-* Easy language
+- Clear headings
+- Bullet points
+- Important definitions
+- Important concepts
+- Exam-focused points
+- Easy language
 """
 
                 summary_result = ask_llm(
                     summary_prompt
                 )
 
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content":
-                        "## 📚 Quick Revision Summary\n\n"
-                        + summary_result
-                    }
-                )
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content":
+                    "## 📚 Quick Revision Summary\n\n"
+                    + summary_result
+                })
 
                 st.rerun()
 
@@ -3150,6 +3488,8 @@ Requirements:
         st.sidebar.error(
             "Please upload and process a document first!"
         )
+
+
 # ==========================================================
 # FIND STUDY TOPICS
 # ==========================================================
@@ -3229,10 +3569,14 @@ Rules:
 
                     if (
                         line
-                        and len(line) > 2
-                        and len(line) <= 100
-                        and line not in topics
+                        and
+                        len(line) > 2
+                        and
+                        len(line) <= 100
+                        and
+                        line not in topics
                     ):
+
                         topics.append(
                             line
                         )
@@ -3266,6 +3610,8 @@ Rules:
         st.sidebar.error(
             "Please upload and process a document first!"
         )
+
+
 # ==========================================================
 # SELECT TOPIC + MIND MAP
 # ==========================================================
@@ -3314,11 +3660,9 @@ if st.session_state.mindmap_topics:
 Create a VALID Graphviz DOT mind map.
 
 TOPIC:
-
 {selected_topic}
 
 STUDY MATERIAL:
-
 {context}
 
 Rules:
@@ -3327,14 +3671,14 @@ Rules:
 2. No markdown.
 3. First word must be digraph.
 4. Use:
-   digraph G {{
+digraph G {{
 5. Use rankdir=LR.
 6. Create one central topic.
 7. Connect central topic to concepts.
 8. Maximum 15 nodes.
 9. Node labels must be inside double quotes.
 10. Edges must use:
-    "Parent" -> "Child";
+"Parent" -> "Child";
 11. Keep labels short.
 """
 
@@ -3388,11 +3732,16 @@ Rules:
                         :end_idx + 1
                     ].strip()
 
-                    st.session_state.mindmap_dot = (
-                        clean_dot
+                    st.markdown("---")
+
+                    st.subheader(
+                        f"🗺️ Mind Map: {selected_topic}"
                     )
 
-                    st.rerun()
+                    st.graphviz_chart(
+                        clean_dot,
+                        use_container_width=True
+                    )
 
                 except Exception as e:
 
@@ -3453,10 +3802,10 @@ MATERIAL:
 Return ONLY valid JSON:
 
 [
-{{
+  {{
     "term": "Term",
     "definition": "Simple definition"
-}}
+  }}
 ]
 """
 
@@ -3497,125 +3846,268 @@ Return ONLY valid JSON:
                 )
 
 
-with files_tab:
+# ==========================================================
+# DISPLAY FLASHCARDS
+# ==========================================================
 
-    # DISPLAY SUMMARY
-    if st.session_state.messages:
-        ...
+if st.session_state.flashcards:
 
-    # DISPLAY MIND MAP
-    if st.session_state.get("mindmap_dot"):
-        ...
+    st.markdown("---")
 
-    # DISPLAY FLASHCARDS
-    if st.session_state.flashcards:
-        ...
+    st.subheader(
+        "🗂️ Interactive Flashcards"
+    )
 
-    # ======================================================
-    # DISPLAY QUIZ
-    # ======================================================
+    st.caption(
+        "Hover over a card to flip it 👆"
+    )
 
-    if st.session_state.quiz_data:
+    cols = st.columns(3)
 
-        st.markdown("---")
+    for i, card in enumerate(
+        st.session_state.flashcards
+    ):
 
-        st.subheader(
-            "📝 Your Interactive Quiz"
+        term = str(
+            card.get(
+                "term",
+                ""
+            )
         )
 
-        with st.form(
-            "interactive_quiz_form"
+        definition = str(
+            card.get(
+                "definition",
+                ""
+            )
+        )
+
+        term_html = (
+            term
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
+
+        definition_html = (
+            definition
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
+
+        card_html = f"""
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<style>
+
+body {{
+    margin: 0;
+    padding: 0;
+    background: transparent;
+}}
+
+.flip-card {{
+    width: 100%;
+    height: 170px;
+    perspective: 1000px;
+}}
+
+.flip-card-inner {{
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+}}
+
+.flip-card:hover .flip-card-inner {{
+    transform: rotateY(180deg);
+}}
+
+.flip-card-front,
+.flip-card-back {{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+    text-align: center;
+
+    border-radius: 12px;
+    backface-visibility: hidden;
+
+    font-family: Arial, sans-serif;
+}}
+
+.flip-card-front {{
+    background-color: #2e2e2e;
+    color: white;
+    font-size: 22px;
+    font-weight: bold;
+}}
+
+.flip-card-back {{
+    background-color: #4CAF50;
+    color: white;
+    font-size: 16px;
+    transform: rotateY(180deg);
+}}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="flip-card">
+
+<div class="flip-card-inner">
+
+<div class="flip-card-front">
+{term_html}
+</div>
+
+<div class="flip-card-back">
+{definition_html}
+</div>
+
+</div>
+
+</div>
+
+</body>
+
+</html>
+"""
+
+        with cols[i % 3]:
+
+            components.html(
+                card_html,
+                height=190,
+                scrolling=False
+            )
+
+
+# ==========================================================
+# QUIZ DISPLAY
+# ==========================================================
+
+if st.session_state.quiz_data:
+
+    st.markdown("---")
+
+    st.subheader(
+        "📝 Your Interactive Quiz"
+    )
+
+    with st.form(
+        "interactive_quiz_form"
+    ):
+
+        user_answers = []
+
+        for i, q in enumerate(
+            st.session_state.quiz_data
         ):
 
-            user_answers = []
-
-            for i, q in enumerate(
-                st.session_state.quiz_data
-            ):
-
-                st.markdown(
-                    f"**Q{i + 1}: "
-                    f"{q['question']}**"
-                )
-
-                ans = st.radio(
-                    f"Select option for Q{i + 1}:",
-                    q["options"],
-                    key=f"radio_q{i}",
-                    label_visibility="collapsed",
-                    index=None
-                )
-
-                user_answers.append(ans)
-
-                st.write("")
-
-            submitted = st.form_submit_button(
-                "Submit Answers"
-            )
-
-        if submitted:
-
-            score = 0
-            wrong = 0
-
             st.markdown(
-                "### 📊 Quiz Results"
+                f"**Q{i + 1}: "
+                f"{q['question']}**"
             )
 
-            for i, q in enumerate(
-                st.session_state.quiz_data
-            ):
-
-                if user_answers[i] == q["answer"]:
-
-                    score += 1
-
-                    st.success(
-                        f"**Q{i + 1}: Correct!** "
-                        f"({q['answer']})"
-                    )
-
-                elif user_answers[i] is None:
-
-                    wrong += 1
-
-                    st.warning(
-                        f"**Q{i + 1}: Not Answered.** "
-                        f"Correct answer: "
-                        f"'{q['answer']}'"
-                    )
-
-                else:
-
-                    wrong += 1
-
-                    st.error(
-                        f"**Q{i + 1}: Incorrect.** "
-                        f"You chose "
-                        f"'{user_answers[i]}'. "
-                        f"Correct answer: "
-                        f"'{q['answer']}'"
-                    )
-
-            total_questions = len(
-                st.session_state.quiz_data
+            ans = st.radio(
+                f"Select option for Q{i + 1}:",
+                q["options"],
+                key=f"radio_q{i}",
+                label_visibility="collapsed",
+                index=None
             )
 
-            st.info(
-                f"**Final Score: {score} Correct, "
-                f"{wrong} Incorrect out of "
-                f"{total_questions}.**"
+            user_answers.append(
+                ans
             )
 
-            if st.button(
-                "❌ Close Quiz",
-                key="close_quiz_button"
-            ):
+            st.write("")
 
-                st.session_state.quiz_data = None
+        submitted = st.form_submit_button(
+            "Submit Answers"
+        )
 
-                st.rerun()
+    if submitted:
+
+        score = 0
+        wrong = 0
+
+        st.markdown(
+            "### 📊 Quiz Results"
+        )
+
+        for i, q in enumerate(
+            st.session_state.quiz_data
+        ):
+
+            if user_answers[i] == q["answer"]:
+
+                score += 1
+
+                st.success(
+                    f"**Q{i + 1}: Correct!** "
+                    f"({q['answer']})"
+                )
+
+            elif user_answers[i] is None:
+
+                wrong += 1
+
+                st.warning(
+                    f"**Q{i + 1}: Not Answered.** "
+                    f"Correct answer: "
+                    f"'{q['answer']}'"
+                )
+
+            else:
+
+                wrong += 1
+
+                st.error(
+                    f"**Q{i + 1}: Incorrect.** "
+                    f"You chose "
+                    f"'{user_answers[i]}'. "
+                    f"Correct answer: "
+                    f"'{q['answer']}'"
+                )
+
+        total_questions = len(
+            st.session_state.quiz_data
+        )
+
+        st.info(
+            f"**Final Score: {score} Correct, "
+            f"{wrong} Incorrect out of "
+            f"{total_questions}.**"
+        )
+
+        if st.button(
+            "❌ Close Quiz",
+            key="close_quiz_button"
+        ):
+
+            st.session_state.quiz_data = None
+
+            st.rerun()
+
+
 # ==========================================================
 # CHAT SETTINGS
 # ==========================================================
@@ -3682,346 +4174,6 @@ if st.sidebar.button(
     st.session_state.messages = []
 
     st.rerun()
-
-# ==========================================================
-# IMAGE GENERATION
-# ==========================================================
-
-st.sidebar.markdown("---")
-
-st.sidebar.header(
-    "🎨 Image Generation"
-)
-
-st.sidebar.caption(
-    "Create an educational image using AI"
-)
-
-image_generation_prompt = st.sidebar.text_area(
-    "📝 Describe the image you want:",
-    placeholder=(
-        "Example: Draw a simple labeled diagram "
-        "of the human heart for a school student."
-    ),
-    height=100,
-    key="image_generation_prompt"
-)
-
-generate_image_button = st.sidebar.button(
-    "🎨 Generate Image",
-    use_container_width=True,
-    key="generate_image_button"
-)
-
-
-def get_hf_token():
-
-    try:
-
-        token = st.secrets.get(
-            "HF_TOKEN",
-            ""
-        )
-
-    except Exception:
-
-        token = ""
-
-    if not token:
-
-        raise RuntimeError(
-            "HF_TOKEN is missing. "
-            "Please add HF_TOKEN to Streamlit Secrets."
-        )
-
-    return str(token).strip()
-
-
-def generate_ai_image(prompt):
-
-    token = get_hf_token()
-
-    client = InferenceClient(
-        provider="auto",
-        api_key=token,
-        timeout=120
-    )
-
-    image = client.text_to_image(
-        prompt=prompt,
-        model="black-forest-labs/FLUX.1-schnell"
-    )
-
-    return image
-
-# ==========================================================
-# REAL IMAGE SEARCH FUNCTION
-# ==========================================================
-
-def search_real_images(query, max_results=4):
-
-    try:
-
-        results = []
-
-        with DDGS() as ddgs:
-
-            image_results = ddgs.images(
-                query,
-                max_results=max_results,
-                safesearch="moderate"
-            )
-
-            for item in image_results:
-
-                image_url = item.get(
-                    "image",
-                    ""
-                )
-
-                thumbnail_url = item.get(
-                    "thumbnail",
-                    ""
-                )
-
-                source_url = item.get(
-                    "url",
-                    ""
-                )
-
-                title = item.get(
-                    "title",
-                    "Related Image"
-                )
-
-                # ==========================================
-                # DOWNLOAD IMAGE DIRECTLY
-                # ==========================================
-
-                image_data = None
-
-                for url in [
-                    image_url,
-                    thumbnail_url
-                ]:
-
-                    if not url:
-                        continue
-
-                    try:
-
-                        response = requests.get(
-                            url,
-                            timeout=10,
-                            headers={
-                                "User-Agent":
-                                "Mozilla/5.0"
-                            }
-                        )
-
-                        if (
-                            response.status_code == 200
-                            and response.content
-                        ):
-
-                            image_data = (
-                                response.content
-                            )
-
-                            break
-
-                    except Exception:
-
-                        continue
-
-                # ==========================================
-                # SAVE RESULT
-                # ==========================================
-
-                if image_data:
-
-                    results.append({
-                        "image": image_data,
-                        "source": source_url,
-                        "title": title
-                    })
-
-        return results
-
-    except Exception as e:
-
-        print(
-            "Real image search error:",
-            e
-        )
-
-        return []
-# ==========================================================
-# IMAGE SEARCH DECISION
-# ==========================================================
-
-def should_search_images(prompt):
-
-    prompt_lower = prompt.lower()
-
-    image_keywords = [
-
-        "image",
-        "images",
-        "photo",
-        "picture",
-        "pic",
-        "show me",
-        "dikhao",
-        "tasveer",
-        "चित्र",
-        "फोटो",
-        "इमेज",
-
-        "diagram",
-        "diagram of",
-        "labeled diagram",
-
-        "map",
-        "location",
-
-        "what does it look like",
-        "looks like",
-        "kaisa dikhta",
-        "kaisi dikhti",
-
-        "human heart",
-        "heart anatomy",
-        "brain",
-        "human brain",
-        "cell",
-        "plant cell",
-        "animal cell",
-        "solar system",
-        "planet",
-        "earth",
-        "moon",
-        "atom",
-        "molecule",
-        "dna",
-        "skeleton",
-        "human body",
-        "digestive system",
-        "respiratory system",
-        "photosynthesis"
-    ]
-
-    return any(
-        keyword in prompt_lower
-        for keyword in image_keywords
-    )
-
-if generate_image_button:
-
-    if not image_generation_prompt.strip():
-
-        st.sidebar.warning(
-            "⚠️ Please enter an image description first."
-        )
-
-    else:
-
-        with st.spinner(
-            "🎨 AI is generating your image..."
-        ):
-
-            try:
-
-                generated_image = generate_ai_image(
-                    image_generation_prompt.strip()
-                )
-
-                st.session_state.generated_ai_image = (
-                    generated_image
-                )
-
-                st.session_state.generated_ai_image_prompt = (
-                    image_generation_prompt.strip()
-                )
-
-                st.success(
-                    "✅ Image generated successfully!"
-                )
-
-            except Exception as e:
-
-                error_text = str(e)
-
-                if (
-                    "credit" in error_text.lower()
-                    or
-                    "billing" in error_text.lower()
-                    or
-                    "payment" in error_text.lower()
-                ):
-
-                    st.sidebar.error(
-                        "❌ Hugging Face free inference "
-                        "credits are unavailable/exhausted."
-                    )
-
-                else:
-
-                    st.sidebar.error(
-                        f"❌ Image generation failed: {e}"
-                    )
-
-
-# ==========================================================
-# DISPLAY GENERATED IMAGE
-# ==========================================================
-
-if st.session_state.get(
-    "generated_ai_image"
-) is not None:
-
-    st.sidebar.markdown("---")
-
-    st.sidebar.subheader(
-        "🖼️ Generated Image"
-    )
-
-    st.sidebar.image(
-        st.session_state.generated_ai_image,
-        use_container_width=True
-    )
-
-    image_bytes = None
-
-    try:
-
-        from io import BytesIO
-
-        image_buffer = BytesIO()
-
-        st.session_state.generated_ai_image.save(
-            image_buffer,
-            format="PNG"
-        )
-
-        image_bytes = image_buffer.getvalue()
-
-    except Exception:
-        image_bytes = None
-
-
-    if image_bytes:
-
-        st.sidebar.download_button(
-            label="⬇️ Download Image",
-            data=image_bytes,
-            file_name="AI_Study_Buddy_Generated_Image.png",
-            mime="image/png",
-            use_container_width=True,
-            key="download_generated_ai_image"
-        )
-
-
 
 
 # ==========================================================
@@ -4229,469 +4381,341 @@ else:
         "Ask your first question "
         "to start tracking progress!"
     )
-    
-with chat_tab:
-
-    # ==========================================================
-    # MAIN CHAT — FIXED
-    # ==========================================================
-    #
-    # The previous version had:
-    # - chat history rendered BEFORE current-input processing
-    # - the LLM called multiple times
-    # - real-image search called multiple times
-    # - the current response rendered temporarily instead of being
-    #   rendered from session_state after a rerun
-    #
-    # This version:
-    # 1. gets the new question,
-    # 2. generates the answer exactly once,
-    # 3. searches real images at most once,
-    # 4. saves the complete assistant message,
-    # 5. reruns,
-    # 6. renders the complete chat from session_state.
-    #
-    # Result: normal text/search answers, real images, and voice
-    # playback stay attached to the main chat conversation.
-
-    st.sidebar.markdown("---")
-
-    st.subheader("💬 Chat with your Study Buddy")
-
-    # ==========================================================
-    # DISPLAY COMPLETE CHAT HISTORY
-    # ==========================================================
-
-    for message in st.session_state.messages:
-
-        role = message.get(
-            "role",
-            "assistant"
-        )
-
-        with st.chat_message(role):
-
-            content = remove_thinking(
-                str(
-                    message.get(
-                        "content",
-                        ""
-                    )
-                )
-            )
-
-            if content:
-
-                st.markdown(
-                    content
-                )
-
-            # ==================================================
-            # REAL IMAGES INSIDE THE SAME ASSISTANT MESSAGE
-            # ==================================================
-
-            images = message.get(
-                "images",
-                []
-            )
-
-            if images:
-
-                st.markdown(
-                    "### 🖼️ Related Real Images"
-                )
-
-                columns = st.columns(2)
-
-                for i, image_data in enumerate(
-                    images
-                ):
-
-                    with columns[i % 2]:
-
-                        try:
-
-                            image_bytes = (
-                                image_data.get(
-                                    "image"
-                                )
-                            )
-
-                            if image_bytes:
-
-                                st.image(
-                                    image_bytes,
-                                    use_container_width=True
-                                )
-
-                            title = image_data.get(
-                                "title",
-                                "Related Image"
-                            )
-
-                            if title:
-
-                                st.caption(
-                                    title
-                                )
-
-                            source_url = image_data.get(
-                                "source",
-                                ""
-                            )
-
-                            if source_url:
-
-                                st.markdown(
-                                    f"[🔗 Open original source]({source_url})"
-                                )
-
-                        except Exception as image_error:
-
-                            print(
-                                "Image display error:",
-                                image_error
-                            )
 
 
-    # ==========================================================
-    # PLAY LAST CHAT RESPONSE
-    # ==========================================================
+# ==========================================================
+# ==========================================================
+# MAIN CHAT — FIXED
+# ==========================================================
+#
+# The previous version had:
+# - chat history rendered BEFORE current-input processing
+# - the LLM called multiple times
+# - real-image search called multiple times
+# - the current response rendered temporarily instead of being
+#   rendered from session_state after a rerun
+#
+# This version:
+# 1. gets the new question,
+# 2. generates the answer exactly once,
+# 3. searches real images at most once,
+# 4. saves the complete assistant message,
+# 5. reruns,
+# 6. renders the complete chat from session_state.
+#
+# Result: normal text/search answers, real images, and voice
+# playback stay attached to the main chat conversation.
 
-    if (
-        st.session_state.messages
-        and
-        st.session_state.messages[-1].get(
-            "role"
-        ) == "assistant"
-    ):
+st.sidebar.markdown("---")
 
-        last_answer = clean_text_for_speech(
-            st.session_state.messages[-1].get(
-                "content",
-                ""
-            )
-        )
-
-        if (
-            last_answer
-            and
-            Path("chat_reply.mp3").exists()
-        ):
-
-            st.audio(
-                "chat_reply.mp3",
-                format="audio/mp3"
-            )
+st.subheader("💬 Chat with your Study Buddy")
 
 
-    # ==========================================================
-    # COMBINED INPUT
-    # ==========================================================
+# ==========================================================
+# COMBINED INPUT
+# ==========================================================
+
+st.markdown(
+    """
+    <style>
+    .combined-input-wrapper {
+        width: 100%;
+        border: 1px solid #d1d5db;
+        border-radius: 16px;
+        padding: 8px;
+        background: #ffffff;
+        box-shadow: 0px 2px 8px rgba(0,0,0,0.08);
+        margin-top: 8px;
+        margin-bottom: 15px;
+    }
+
+    div[data-testid="stAudioInput"] {
+        margin-bottom: 0 !important;
+    }
+
+    div[data-testid="stAudioInput"] > div {
+        border-radius: 12px !important;
+    }
+
+    @media (max-width: 768px) {
+        .combined-input-wrapper {
+            border-radius: 14px;
+            padding: 6px;
+        }
+
+        div[data-testid="stAudioInput"] button {
+            min-height: 45px !important;
+        }
+
+        div[data-testid="stChatInput"] {
+            margin-bottom: 5px !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .combined-input-wrapper {
+            padding: 5px;
+            border-radius: 12px;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+st.write("🎤 **Ask your Study Buddy by voice or text:**")
+
+input_container = st.container()
+
+with input_container:
 
     st.markdown(
-        """
-        <style>
-        .combined-input-wrapper {
-            width: 100%;
-            border: 1px solid #d1d5db;
-            border-top: none !important;
-            border-radius: 16px;
-            padding: 8px;
-            background: #ffffff;
-            box-shadow: 0px 2px 8px rgba(0,0,0,0.08);
-            margin-top: 8px;
-            margin-bottom: 15px;
-        }
-
-        div[data-testid="stAudioInput"] {
-            margin-bottom: 0 !important;
-        }
-
-        div[data-testid="stAudioInput"] > div {
-            border-radius: 12px !important;
-        }
-
-        @media (max-width: 768px) {
-            .combined-input-wrapper {
-                border-radius: 14px;
-                padding: 6px;
-            }
-
-            div[data-testid="stAudioInput"] button {
-                min-height: 45px !important;
-            }
-
-            div[data-testid="stChatInput"] {
-                margin-bottom: 5px !important;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .combined-input-wrapper {
-                padding: 5px;
-                border-radius: 12px;
-            }
-        }
-        </style>
-        """,
+        '<div class="combined-input-wrapper">',
         unsafe_allow_html=True
     )
 
-    st.write("🎤 **Ask your Study Buddy by voice or text:**")
+    input_col1, input_col2 = st.columns(
+        [1.2, 8.8],
+        gap="small"
+    )
 
-    input_container = st.container()
-
-    with input_container:
-
-        st.markdown(
-            '<div class="combined-input-wrapper">',
-            unsafe_allow_html=True
+    with input_col1:
+        audio = st.audio_input(
+            "",
+            key="my_voice_mic",
+            label_visibility="collapsed"
         )
 
-        input_col1, input_col2 = st.columns(
-            [1.2, 8.8],
-            gap="small"
+    with input_col2:
+        text_input = st.chat_input(
+            "Ask your question..."
         )
 
-        with input_col1:
+    st.markdown(
+        "</div>",
+        unsafe_allow_html=True
+    )
 
-            audio = st.audio_input(
-                "",
-                key="my_voice_mic",
-                label_visibility="collapsed"
-            )
 
-        with input_col2:
+# ==========================================================
+# VOICE INPUT
+# ==========================================================
 
-            text_input = st.chat_input(
-                "Ask your question..."
-            )
+voice_input = None
 
-        st.markdown(
-            "</div>",
-            unsafe_allow_html=True
+if audio is not None:
+
+    audio_bytes = audio.getvalue()
+
+    current_audio_id = hash(audio_bytes)
+
+    if current_audio_id != st.session_state.get(
+        "last_audio_id"
+    ):
+
+        st.session_state.last_audio_id = current_audio_id
+
+        st.info(
+            "🔄 Your voice is being processed..."
         )
 
+        try:
 
-    # ==========================================================
-    # VOICE INPUT
-    # ==========================================================
-
-    voice_input = None
-
-    if audio is not None:
-
-        audio_bytes = audio.getvalue()
-
-        current_audio_id = hash(audio_bytes)
-
-        if current_audio_id != st.session_state.get(
-            "last_audio_id"
-        ):
-
-            st.session_state.last_audio_id = current_audio_id
-
-            st.info(
-                "🔄 Your voice is being processed..."
+            client = Groq(
+                api_key=get_groq_api_key()
             )
 
-            try:
+            transcription = (
+                client.audio.transcriptions.create(
+                    file=(
+                        "audio.wav",
+                        audio_bytes
+                    ),
+                    model="whisper-large-v3",
+                    response_format="text"
+                )
+            )
 
-                client = Groq(
-                    api_key=get_groq_api_key()
+            voice_input = str(
+                transcription
+            ).strip()
+
+            if voice_input:
+
+                st.success(
+                    "✅ Voice understood!"
                 )
 
-                transcription = (
-                    client.audio.transcriptions.create(
-                        file=(
-                            "audio.wav",
-                            audio_bytes
-                        ),
-                        model="whisper-large-v3",
-                        response_format="text"
-                    )
-                )
+            else:
 
-                voice_input = str(
-                    transcription
-                ).strip()
-
-                if voice_input:
-
-                    st.success(
-                        "✅ Voice understood!"
-                    )
-
-                else:
-
-                    st.warning(
-                        "⚠️ Voice samajh nahi aayi. "
-                        "Please try recording again."
-                    )
-
-                    voice_input = None
-
-            except Exception as e:
-
-                st.error(
-                    f"❌ Audio processing error: {e}"
+                st.warning(
+                    "⚠️ Voice samajh nahi aayi. "
+                    "Please try recording again."
                 )
 
                 voice_input = None
 
+        except Exception as e:
 
-    # ==========================================================
-    # FINAL PROMPT
-    # ==========================================================
-
-    prompt = (
-        text_input
-        if text_input
-        else voice_input
-    )
-
-
-    # ==========================================================
-    # PROCESS NEW MESSAGE FIRST
-    # ==========================================================
-
-    if prompt:
-
-        prompt = str(prompt).strip()
-
-        if not prompt:
-
-            st.warning(
-                "Please enter a question."
+            st.error(
+                f"❌ Audio processing error: {e}"
             )
 
-            st.stop()
+            voice_input = None
 
 
-        # ======================================================
-        # SAVE USER MESSAGE
-        # ======================================================
+# ==========================================================
+# FINAL PROMPT
+# ==========================================================
 
-        st.session_state.messages.append({
-            "role": "user",
-            "content": prompt
-        })
+prompt = (
+    text_input
+    if text_input
+    else voice_input
+)
 
 
-        
+# ==========================================================
+# PROCESS NEW MESSAGE FIRST
+# ==========================================================
 
-            # ==================================================
-            # MEMORY
-            # ==================================================
+if prompt:
+
+    prompt = str(prompt).strip()
+
+    if not prompt:
+
+        st.warning(
+            "Please enter a question."
+        )
+
+        st.stop()
+
+
+    # ======================================================
+    # SAVE USER MESSAGE
+    # ======================================================
+
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt
+    })
+
 
     try:
 
-                memory_context = get_memory_context(
-                    prompt,
-                    max_memories=8
-                )
+        # ==================================================
+        # MEMORY
+        # ==================================================
 
-    except Exception:
+        try:
 
-                memory_context = (
-                    "No long-term memory is available "
-                    "for this user."
-                )
+            memory_context = get_memory_context(
+                prompt,
+                max_memories=8
+            )
 
+        except Exception:
 
-            # ==================================================
-            # DOCUMENT RETRIEVAL
-            # ==================================================
-
-    document_context = ""
-    if st.session_state.vector_store is not None:
-
-                try:
-
-                    docs = (
-                        st.session_state.vector_store
-                        .similarity_search(
-                            prompt,
-                            k=5
-                        )
-                    )
-
-                    if docs:
-
-                        document_context = "\n\n".join(
-                            str(doc.page_content)
-                            for doc in docs
-                            if getattr(
-                                doc,
-                                "page_content",
-                                None
-                            )
-                        )
-
-                except Exception:
-
-                    document_context = ""
+            memory_context = (
+                "No long-term memory is available "
+                "for this user."
+            )
 
 
-            # ==================================================
-            # WEB SEARCH
-            # ==================================================
+        # ==================================================
+        # DOCUMENT RETRIEVAL
+        # ==================================================
 
-    web_context = ""
+        document_context = ""
 
-    try:
+        if st.session_state.vector_store is not None:
 
-                search_results = []
+            try:
 
-                with DDGS() as ddgs:
-
-                    results = ddgs.text(
+                docs = (
+                    st.session_state.vector_store
+                    .similarity_search(
                         prompt,
-                        max_results=5
+                        k=5
+                    )
+                )
+
+                if docs:
+
+                    document_context = "\n\n".join(
+                        str(doc.page_content)
+                        for doc in docs
+                        if getattr(
+                            doc,
+                            "page_content",
+                            None
+                        )
                     )
 
-                    for result in results:
+            except Exception:
 
-                        title = result.get(
-                            "title",
-                            ""
-                        )
+                document_context = ""
 
-                        body = result.get(
-                            "body",
-                            ""
-                        )
 
-                        href = result.get(
-                            "href",
-                            ""
-                        )
+        # ==================================================
+        # WEB SEARCH
+        # ==================================================
 
-                        if title or body:
+        web_context = ""
 
-                            search_results.append(
-                                f"TITLE: {title}\n"
-                                f"CONTENT: {body}\n"
-                                f"SOURCE: {href}"
-                            )
+        try:
 
-                if search_results:
+            search_results = []
 
-                    web_context = "\n\n".join(
-                        search_results
+            with DDGS() as ddgs:
+
+                results = ddgs.text(
+                    prompt,
+                    max_results=5
+                )
+
+                for result in results:
+
+                    title = result.get(
+                        "title",
+                        ""
                     )
 
-    except Exception:
+                    body = result.get(
+                        "body",
+                        ""
+                    )
 
-                web_context = ""
+                    href = result.get(
+                        "href",
+                        ""
+                    )
+
+                    if title or body:
+
+                        search_results.append(
+                            f"TITLE: {title}\n"
+                            f"CONTENT: {body}\n"
+                            f"SOURCE: {href}"
+                        )
+
+            if search_results:
+
+                web_context = "\n\n".join(
+                    search_results
+                )
+
+        except Exception:
+
+            web_context = ""
 
 
-            # ==================================================
-            # SYSTEM PROMPT
-            # ==================================================
+        # ==================================================
+        # SYSTEM PROMPT
+        # ==================================================
 
-    system_prompt = f"""
+        system_prompt = f"""
 You are a highly intelligent AI Study Buddy
 and Expert Teacher.
 
@@ -4710,6 +4734,7 @@ If the user writes Hinglish, answer naturally
 in Hinglish.
 
 If the user writes English, answer in English.
+
 ==================================================
 LONG-TERM MEMORY
 ==================================================
@@ -4814,14 +4839,47 @@ The user must see only the final answer.
 """
 
 
-                
+        # ==================================================
+        # ONE MODEL CALL ONLY
+        # ==================================================
+
+        with st.spinner(
+            "🤖 Thinking..."
+        ):
+
+            response = get_llm().invoke(
+                [
+                    SystemMessage(
+                        content=system_prompt
+                    ),
+                    HumanMessage(
+                        content=prompt
+                    )
+                ]
+            )
+
+        answer = response_to_text(
+            response
+        )
+
+        answer = remove_thinking(
+            answer
+        ).strip()
+
+        if not answer:
+
+            raise RuntimeError(
+                "AI returned an empty response."
+            )
+
+
         # ==================================================
         # REAL IMAGE SEARCH — ONLY ONCE
         # ==================================================
 
-real_image_results = []
+        real_image_results = []
 
-if (
+        if (
             st.session_state.get(
                 "real_image_search_enabled",
                 True
@@ -4880,8 +4938,10 @@ if (
 
         try:
 
-            clean_answer = clean_text_for_speech(
-                answer
+            clean_answer = (
+                clean_text_for_speech(
+                    answer
+                )
             )
 
             if clean_answer:
@@ -4929,6 +4989,133 @@ if (
 
 
 # ==========================================================
+# DISPLAY COMPLETE CHAT HISTORY
+# ==========================================================
+
+for message in st.session_state.messages:
+
+    role = message.get(
+        "role",
+        "assistant"
+    )
+
+    with st.chat_message(role):
+
+        content = remove_thinking(
+            str(
+                message.get(
+                    "content",
+                    ""
+                )
+            )
+        )
+
+        if content:
+
+            st.markdown(
+                content
+            )
+
+
+        # ==================================================
+        # REAL IMAGES INSIDE THE SAME ASSISTANT MESSAGE
+        # ==================================================
+
+        images = message.get(
+            "images",
+            []
+        )
+
+        if images:
+
+            st.markdown(
+                "### 🖼️ Related Real Images"
+            )
+
+            columns = st.columns(2)
+
+            for i, image_data in enumerate(
+                images
+            ):
+
+                with columns[i % 2]:
+
+                    try:
+
+                        image_bytes = (
+                            image_data.get(
+                                "image"
+                            )
+                        )
+
+                        if image_bytes:
+
+                            st.image(
+                                image_bytes,
+                                use_container_width=True
+                            )
+
+                        title = image_data.get(
+                            "title",
+                            "Related Image"
+                        )
+
+                        if title:
+
+                            st.caption(
+                                title
+                            )
+
+                        source_url = image_data.get(
+                            "source",
+                            ""
+                        )
+
+                        if source_url:
+
+                            st.markdown(
+                                f"[🔗 Open original source]({source_url})"
+                            )
+
+                    except Exception as image_error:
+
+                        print(
+                            "Image display error:",
+                            image_error
+                        )
+
+
+# ==========================================================
+# PLAY LAST CHAT RESPONSE
+# ==========================================================
+
+if (
+    st.session_state.messages
+    and
+    st.session_state.messages[-1].get(
+        "role"
+    ) == "assistant"
+):
+
+    last_answer = clean_text_for_speech(
+        st.session_state.messages[-1].get(
+            "content",
+            ""
+        )
+    )
+
+    if (
+        last_answer
+        and
+        Path("chat_reply.mp3").exists()
+    ):
+
+        st.audio(
+            "chat_reply.mp3",
+            format="audio/mp3"
+        )
+
+# ==========================================================
 # MEMORY SIDEBAR
 # ==========================================================
 
@@ -4943,7 +5130,8 @@ current_memories = load_all_memories()
 if current_memories:
 
     st.sidebar.success(
-        f"🧠 {len(current_memories)} memory item(s) saved"
+        f"🧠 {len(current_memories)} "
+        f"memory item(s) saved"
     )
 
 else:
