@@ -2929,50 +2929,45 @@ st.sidebar.subheader(
 )
 
 # ==========================================================
-
 # QUIZ
-
 # ==========================================================
 
 num_questions = st.sidebar.slider(
-"How many questions?",
-min_value=1,
-max_value=100,
-value=5,
-key="quiz_question_count"
+    "How many questions?",
+    min_value=1,
+    max_value=100,
+    value=5,
+    key="quiz_question_count"
 )
 
 if st.sidebar.button(
-"📝 Generate MCQ Quiz",
-key="generate_quiz_button"
+    "📝 Generate MCQ Quiz",
+    key="generate_quiz_button"
 ):
 
+    if st.session_state.vector_store is not None:
 
-if st.session_state.vector_store is not None:
+        with st.spinner(
+            f"AI is preparing your "
+            f"{num_questions}-question quiz..."
+        ):
 
-    with st.spinner(
-        f"AI is preparing your "
-        f"{num_questions}-question quiz..."
-    ):
+            try:
 
-        try:
-
-            docs = (
-                st.session_state.vector_store
-                .similarity_search(
-                    "core concepts definitions important topics",
-                    k=10
+                docs = (
+                    st.session_state.vector_store
+                    .similarity_search(
+                        "core concepts definitions important topics",
+                        k=10
+                    )
                 )
-            )
 
-            context = "\n\n".join(
-                doc.page_content
-                for doc in docs
-            )
+                context = "\n\n".join(
+                    doc.page_content
+                    for doc in docs
+                )
 
-            quiz_prompt = f"""
-```
-
+                quiz_prompt = f"""
 Based ONLY on this study material,
 create exactly {num_questions} MCQs.
 
@@ -2984,14 +2979,14 @@ Return ONLY valid JSON:
 
 [
 {{
-"question": "Question",
-"options": [
-"Option A",
-"Option B",
-"Option C",
-"Option D"
-],
-"answer": "Correct option"
+    "question": "Question",
+    "options": [
+        "Option A",
+        "Option B",
+        "Option C",
+        "Option D"
+    ],
+    "answer": "Correct option"
 }}
 ]
 
@@ -3002,136 +2997,128 @@ Rules:
 * Answer must exactly match one option.
 * No markdown.
 * No explanation.
-  """
+"""
 
-  ```
-            raw_text = ask_llm(
-                quiz_prompt
-            )
-
-            clean_text = (
-                clean_json_response(
-                    raw_text
-                )
-            )
-
-            quiz_data = json.loads(
-                clean_text
-            )
-
-            if not isinstance(
-                quiz_data,
-                list
-            ):
-
-                raise ValueError(
-                    "Quiz response is not a list."
+                raw_text = ask_llm(
+                    quiz_prompt
                 )
 
-            valid_quiz = []
+                clean_text = (
+                    clean_json_response(
+                        raw_text
+                    )
+                )
 
-            for question in quiz_data:
+                quiz_data = json.loads(
+                    clean_text
+                )
 
                 if not isinstance(
-                    question,
-                    dict
+                    quiz_data,
+                    list
                 ):
-                    continue
+                    raise ValueError(
+                        "Quiz response is not a list."
+                    )
 
-                if (
-                    "question" not in question
-                    or
-                    "options" not in question
-                    or
-                    "answer" not in question
-                ):
-                    continue
+                valid_quiz = []
 
-                if len(
-                    question["options"]
-                ) != 4:
-                    continue
+                for question in quiz_data:
 
-                if (
-                    question["answer"]
-                    not in question["options"]
-                ):
-                    continue
+                    if not isinstance(
+                        question,
+                        dict
+                    ):
+                        continue
 
-                valid_quiz.append(
-                    question
+                    if (
+                        "question" not in question
+                        or
+                        "options" not in question
+                        or
+                        "answer" not in question
+                    ):
+                        continue
+
+                    if len(
+                        question["options"]
+                    ) != 4:
+                        continue
+
+                    if (
+                        question["answer"]
+                        not in question["options"]
+                    ):
+                        continue
+
+                    valid_quiz.append(
+                        question
+                    )
+
+                if len(valid_quiz) < num_questions:
+
+                    raise ValueError(
+                        "AI did not generate enough valid questions."
+                    )
+
+                st.session_state.quiz_data = (
+                    valid_quiz[:num_questions]
                 )
 
-            if len(valid_quiz) < num_questions:
-
-                raise ValueError(
-                    "AI did not generate enough valid questions."
+                st.sidebar.success(
+                    "✅ Quiz generated!"
                 )
 
-            st.session_state.quiz_data = (
-                valid_quiz[:num_questions]
-            )
+                st.rerun()
 
-            st.sidebar.success(
-                "✅ Quiz generated!"
-            )
+            except Exception as e:
 
-            st.rerun()
+                st.sidebar.error(
+                    f"Quiz generation failed: {e}"
+                )
 
-        except Exception as e:
+    else:
 
-            st.sidebar.error(
-                f"Quiz generation failed: {e}"
-            )
-  ```
+        st.sidebar.error(
+            "Please upload and process a document first!"
+        )
 
-  else:
-
-  ```
-    st.sidebar.error(
-        "Please upload and process a document first!"
-    )
-  ```
 
 # ==========================================================
-
 # SUMMARY
-
 # ==========================================================
 
 if st.sidebar.button(
-"📄 Generate Summary",
-key="generate_summary_button"
+    "📄 Generate Summary",
+    key="generate_summary_button"
 ):
 
-```
-if st.session_state.vector_store is not None:
+    if st.session_state.vector_store is not None:
 
-    with st.spinner(
-        "AI is reading and summarizing..."
-    ):
+        with st.spinner(
+            "AI is reading and summarizing..."
+        ):
 
-        try:
+            try:
 
-            docs = (
-                st.session_state.vector_store
-                .similarity_search(
-                    "comprehensive summary core themes definitions",
-                    k=8
+                docs = (
+                    st.session_state.vector_store
+                    .similarity_search(
+                        "comprehensive summary core themes definitions",
+                        k=8
+                    )
                 )
-            )
 
-            context = "\n\n".join(
-                doc.page_content
-                for doc in docs
-            )
+                context = "\n\n".join(
+                    doc.page_content
+                    for doc in docs
+                )
 
-            summary_prompt = f"""
-```
-
+                summary_prompt = f"""
 Create a highly structured study summary.
 
 TARGET LANGUAGE:
+
 {translation_language}
 
 {get_language_instruction(translation_language)}
@@ -3148,73 +3135,65 @@ Requirements:
 * Important concepts
 * Exam-focused points
 * Easy language
-  """
+"""
 
-  ```
-            summary_result = ask_llm(
-                summary_prompt
-            )
+                summary_result = ask_llm(
+                    summary_prompt
+                )
 
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content":
-                "## 📚 Quick Revision Summary\n\n"
-                + summary_result
-            })
+                st.session_state.messages.append(
+                    {
+                        "role": "assistant",
+                        "content":
+                        "## 📚 Quick Revision Summary\n\n"
+                        + summary_result
+                    }
+                )
 
-            st.rerun()
+                st.rerun()
 
-        except Exception as e:
+            except Exception as e:
 
-            st.sidebar.error(
-                f"Summary generation failed: {e}"
-            )
-  ```
+                st.sidebar.error(
+                    f"Summary generation failed: {e}"
+                )
 
-  else:
+    else:
 
-  ```
-    st.sidebar.error(
-        "Please upload and process a document first!"
-    )
-  ```
-
+        st.sidebar.error(
+            "Please upload and process a document first!"
+        )
 # ==========================================================
-
 # FIND STUDY TOPICS
-
 # ==========================================================
 
 if st.sidebar.button(
-"📚 Find Study Topics",
-key="find_topics_button"
+    "📚 Find Study Topics",
+    key="find_topics_button"
 ):
 
-```
-if st.session_state.vector_store is not None:
+    if st.session_state.vector_store is not None:
 
-    with st.spinner(
-        "Finding important topics..."
-    ):
+        with st.spinner(
+            "Finding important topics..."
+        ):
 
-        try:
+            try:
 
-            docs = (
-                st.session_state.vector_store
-                .similarity_search(
-                    "main topics chapters concepts headings important subjects",
-                    k=12
+                docs = (
+                    st.session_state.vector_store
+                    .similarity_search(
+                        "main topics chapters concepts headings important subjects",
+                        k=12
+                    )
                 )
-            )
 
-            context = "\n\n".join(
-                str(doc.page_content)
-                for doc in docs
-            )
+                context = "\n\n".join(
+                    str(doc.page_content)
+                    for doc in docs
+                )
 
-            topic_prompt = f"""
-```
-
+                topic_prompt = f"""
 Identify the most important topics from this study material.
 
 STUDY MATERIAL:
@@ -3228,143 +3207,131 @@ Rules:
 3. Each topic must be short.
 4. No explanations.
 5. No repeated topics.
-   """
+"""
 
-   ```
-            raw_response = ask_llm(
-                topic_prompt
-            )
-
-            raw_text = remove_thinking(
-                str(raw_response)
-            ).strip()
-
-            topics = []
-
-            for line in raw_text.splitlines():
-
-                line = line.strip()
-
-                if not line:
-                    continue
-
-                line = re.sub(
-                    r"^\s*\d+[\.\)\-:]\s*",
-                    "",
-                    line
+                raw_response = ask_llm(
+                    topic_prompt
                 )
 
-                line = re.sub(
-                    r"^\s*[-*•]\s*",
-                    "",
-                    line
-                )
+                raw_text = remove_thinking(
+                    str(raw_response)
+                ).strip()
 
-                line = line.strip()
+                topics = []
 
-                if (
-                    line
-                    and
-                    len(line) > 2
-                    and
-                    len(line) <= 100
-                    and
-                    line not in topics
-                ):
+                for line in raw_text.splitlines():
 
-                    topics.append(
+                    line = line.strip()
+
+                    if not line:
+                        continue
+
+                    line = re.sub(
+                        r"^\s*\d+[\.\)\-:]\s*",
+                        "",
                         line
                     )
 
-            topics = topics[:10]
+                    line = re.sub(
+                        r"^\s*[-*•]\s*",
+                        "",
+                        line
+                    )
 
-            if not topics:
+                    line = line.strip()
 
-                raise ValueError(
-                    "Could not identify study topics."
+                    if (
+                        line
+                        and len(line) > 2
+                        and len(line) <= 100
+                        and line not in topics
+                    ):
+                        topics.append(
+                            line
+                        )
+
+                topics = topics[:10]
+
+                if not topics:
+
+                    raise ValueError(
+                        "Could not identify study topics."
+                    )
+
+                st.session_state.mindmap_topics = topics
+
+                st.session_state.selected_mindmap_topic = (
+                    topics[0]
                 )
 
-            st.session_state.mindmap_topics = topics
+                st.sidebar.success(
+                    f"Found {len(topics)} study topics!"
+                )
 
-            st.session_state.selected_mindmap_topic = (
-                topics[0]
-            )
+            except Exception as e:
 
-            st.sidebar.success(
-                f"Found {len(topics)} study topics!"
-            )
+                st.sidebar.error(
+                    f"Topic detection failed: {e}"
+                )
 
-        except Exception as e:
+    else:
 
-            st.sidebar.error(
-                f"Topic detection failed: {e}"
-            )
-   ```
-
-   else:
-
-   ```
-    st.sidebar.error(
-        "Please upload and process a document first!"
-    )
-   ```
-
+        st.sidebar.error(
+            "Please upload and process a document first!"
+        )
 # ==========================================================
-
 # SELECT TOPIC + MIND MAP
-
 # ==========================================================
 
 if st.session_state.mindmap_topics:
 
-```
-st.sidebar.markdown("---")
+    st.sidebar.markdown("---")
 
-st.sidebar.subheader(
-    "🧠 Select a Topic"
-)
+    st.sidebar.subheader(
+        "🧠 Select a Topic"
+    )
 
-selected_topic = st.sidebar.selectbox(
-    "Choose a topic for your Mind Map:",
-    st.session_state.mindmap_topics,
-    key="selected_mindmap_topic"
-)
+    selected_topic = st.sidebar.selectbox(
+        "Choose a topic for your Mind Map:",
+        st.session_state.mindmap_topics,
+        key="selected_mindmap_topic"
+    )
 
-if st.sidebar.button(
-    "🗺️ Generate Mind Map",
-    key="generate_mindmap_button"
-):
+    if st.sidebar.button(
+        "🗺️ Generate Mind Map",
+        key="generate_mindmap_button"
+    ):
 
-    if st.session_state.vector_store is not None:
+        if st.session_state.vector_store is not None:
 
-        with st.spinner(
-            f"Designing Mind Map for {selected_topic}..."
-        ):
+            with st.spinner(
+                f"Designing Mind Map for {selected_topic}..."
+            ):
 
-            try:
+                try:
 
-                docs = (
-                    st.session_state.vector_store
-                    .similarity_search(
-                        selected_topic,
-                        k=10
+                    docs = (
+                        st.session_state.vector_store
+                        .similarity_search(
+                            selected_topic,
+                            k=10
+                        )
                     )
-                )
 
-                context = "\n\n".join(
-                    str(doc.page_content)
-                    for doc in docs
-                )
+                    context = "\n\n".join(
+                        str(doc.page_content)
+                        for doc in docs
+                    )
 
-                mindmap_prompt = f"""
-```
-
+                    mindmap_prompt = f"""
 Create a VALID Graphviz DOT mind map.
 
 TOPIC:
+
 {selected_topic}
 
 STUDY MATERIAL:
+
 {context}
 
 Rules:
@@ -3382,120 +3349,114 @@ Rules:
 10. Edges must use:
     "Parent" -> "Child";
 11. Keep labels short.
-    """
+"""
 
-    ````
-                raw_response = ask_llm(
-                    mindmap_prompt
-                )
-
-                raw_text = remove_thinking(
-                    str(raw_response)
-                ).strip()
-
-                raw_text = re.sub(
-                    r"```(?:dot|graphviz)?",
-                    "",
-                    raw_text,
-                    flags=re.IGNORECASE
-                )
-
-                raw_text = raw_text.replace(
-                    "```",
-                    ""
-                ).strip()
-
-                match = re.search(
-                    r"\bdigraph\b",
-                    raw_text,
-                    flags=re.IGNORECASE
-                )
-
-                if not match:
-
-                    raise ValueError(
-                        "AI did not return Graphviz DOT code."
+                    raw_response = ask_llm(
+                        mindmap_prompt
                     )
 
-                clean_dot = raw_text[
-                    match.start():
-                ].strip()
+                    raw_text = remove_thinking(
+                        str(raw_response)
+                    ).strip()
 
-                end_idx = clean_dot.rfind(
-                    "}"
-                )
-
-                if end_idx == -1:
-
-                    raise ValueError(
-                        "Graphviz code is incomplete."
+                    raw_text = re.sub(
+                        r"```(?:dot|graphviz)?",
+                        "",
+                        raw_text,
+                        flags=re.IGNORECASE
                     )
 
-                clean_dot = clean_dot[
-                    :end_idx + 1
-                ].strip()
+                    raw_text = raw_text.replace(
+                        "```",
+                        ""
+                    ).strip()
 
-                st.session_state.mindmap_dot = (
-                    clean_dot
-                )
+                    match = re.search(
+                        r"\bdigraph\b",
+                        raw_text,
+                        flags=re.IGNORECASE
+                    )
 
-                st.rerun()
+                    if not match:
 
-            except Exception as e:
+                        raise ValueError(
+                            "AI did not return Graphviz DOT code."
+                        )
 
-                st.sidebar.error(
-                    f"Mind Map failed: {e}"
-                )
+                    clean_dot = raw_text[
+                        match.start():
+                    ].strip()
 
-    else:
+                    end_idx = clean_dot.rfind(
+                        "}"
+                    )
 
-        st.sidebar.error(
-            "Please upload and process a document first!"
-        )
-    ````
+                    if end_idx == -1:
+
+                        raise ValueError(
+                            "Graphviz code is incomplete."
+                        )
+
+                    clean_dot = clean_dot[
+                        :end_idx + 1
+                    ].strip()
+
+                    st.session_state.mindmap_dot = (
+                        clean_dot
+                    )
+
+                    st.rerun()
+
+                except Exception as e:
+
+                    st.sidebar.error(
+                        f"Mind Map failed: {e}"
+                    )
+
+        else:
+
+            st.sidebar.error(
+                "Please upload and process a document first!"
+            )
+
 
 # ==========================================================
-
 # FLASHCARDS
-
 # ==========================================================
 
 if st.sidebar.button(
-"🗂️ Generate Flashcards",
-key="generate_flashcards_button"
+    "🗂️ Generate Flashcards",
+    key="generate_flashcards_button"
 ):
 
-```
-if st.session_state.vector_store is None:
+    if st.session_state.vector_store is None:
 
-    st.sidebar.error(
-        "Please upload a document first!"
-    )
+        st.sidebar.error(
+            "Please upload a document first!"
+        )
 
-else:
+    else:
 
-    with st.spinner(
-        "Creating Flashcards..."
-    ):
+        with st.spinner(
+            "Creating Flashcards..."
+        ):
 
-        try:
+            try:
 
-            docs = (
-                st.session_state.vector_store
-                .similarity_search(
-                    "important terms definitions key concepts",
-                    k=5
+                docs = (
+                    st.session_state.vector_store
+                    .similarity_search(
+                        "important terms definitions key concepts",
+                        k=5
+                    )
                 )
-            )
 
-            context = "\n\n".join(
-                doc.page_content
-                for doc in docs
-            )
+                context = "\n\n".join(
+                    doc.page_content
+                    for doc in docs
+                )
 
-            prompt = f"""
-```
-
+                prompt = f"""
 Create exactly 6 important flashcards.
 
 MATERIAL:
@@ -3506,168 +3467,159 @@ Return ONLY valid JSON:
 
 [
 {{
-"term": "Term",
-"definition": "Simple definition"
+    "term": "Term",
+    "definition": "Simple definition"
 }}
 ]
 """
 
-```
-            response = get_llm().invoke(
-                [
-                    HumanMessage(
-                        content=prompt
-                    )
-                ]
-            )
+                response = get_llm().invoke(
+                    [
+                        HumanMessage(
+                            content=prompt
+                        )
+                    ]
+                )
 
-            text = response_to_text(
-                response
-            )
+                text = response_to_text(
+                    response
+                )
 
-            text = clean_json_response(
-                text
-            )
+                text = clean_json_response(
+                    text
+                )
 
-            cards = json.loads(
-                text
-            )
+                cards = json.loads(
+                    text
+                )
 
-            st.session_state.flashcards = (
-                cards[:6]
-            )
+                st.session_state.flashcards = (
+                    cards[:6]
+                )
 
-            st.sidebar.success(
-                "✅ Flashcards ready!"
-            )
+                st.sidebar.success(
+                    "✅ Flashcards ready!"
+                )
 
-            st.rerun()
+                st.rerun()
 
-        except Exception as e:
+            except Exception as e:
 
-            st.sidebar.error(
-                f"Flashcard error: {e}"
-            )
-```
+                st.sidebar.error(
+                    f"Flashcard error: {e}"
+                )
+
 
 # ==========================================================
-
 # FILES & STUDY TAB — SMART STUDY OUTPUTS
-
 # ==========================================================
 
 with files_tab:
 
-```
-# ======================================================
-# DISPLAY SUMMARY
-# ======================================================
+    # ======================================================
+    # DISPLAY SUMMARY
+    # ======================================================
 
-if st.session_state.messages:
+    if st.session_state.messages:
 
-    for message in reversed(
-        st.session_state.messages
-    ):
-
-        if (
-            message.get("role") == "assistant"
-            and
-            "Quick Revision Summary"
-            in message.get(
-                "content",
-                ""
-            )
+        for message in reversed(
+            st.session_state.messages
         ):
 
-            st.markdown("---")
+            if (
+                message.get("role") == "assistant"
+                and
+                "Quick Revision Summary"
+                in message.get(
+                    "content",
+                    ""
+                )
+            ):
 
-            st.markdown(
-                message["content"]
-            )
+                st.markdown("---")
 
-            break
+                st.markdown(
+                    message["content"]
+                )
 
-
-# ======================================================
-# DISPLAY MIND MAP
-# ======================================================
-
-if st.session_state.get(
-    "mindmap_dot"
-):
-
-    st.markdown("---")
-
-    st.subheader(
-        f"🗺️ Mind Map: "
-        f"{st.session_state.get('selected_mindmap_topic', '')}"
-    )
-
-    st.graphviz_chart(
-        st.session_state.mindmap_dot,
-        use_container_width=True
-    )
+                break
 
 
-# ======================================================
-# DISPLAY FLASHCARDS
-# ======================================================
+    # ======================================================
+    # DISPLAY MIND MAP
+    # ======================================================
 
-if st.session_state.flashcards:
-
-    st.markdown("---")
-
-    st.subheader(
-        "🗂️ Interactive Flashcards"
-    )
-
-    st.caption(
-        "Hover over a card to flip it 👆"
-    )
-
-    cols = st.columns(3)
-
-    for i, card in enumerate(
-        st.session_state.flashcards
+    if st.session_state.get(
+        "mindmap_dot"
     ):
 
-        term = str(
-            card.get(
-                "term",
-                ""
+        st.markdown("---")
+
+        st.subheader(
+            f"🗺️ Mind Map: "
+            f"{st.session_state.get('selected_mindmap_topic', '')}"
+        )
+
+        st.graphviz_chart(
+            st.session_state.mindmap_dot,
+            use_container_width=True
+        )
+
+
+    # ======================================================
+    # DISPLAY FLASHCARDS
+    # ======================================================
+
+    if st.session_state.flashcards:
+
+        st.markdown("---")
+
+        st.subheader(
+            "🗂️ Interactive Flashcards"
+        )
+
+        st.caption(
+            "Hover over a card to flip it 👆"
+        )
+
+        cols = st.columns(3)
+
+        for i, card in enumerate(
+            st.session_state.flashcards
+        ):
+
+            term = str(
+                card.get(
+                    "term",
+                    ""
+                )
             )
-        )
 
-        definition = str(
-            card.get(
-                "definition",
-                ""
+            definition = str(
+                card.get(
+                    "definition",
+                    ""
+                )
             )
-        )
 
-        term_html = (
-            term
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-        )
+            term_html = (
+                term
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            )
 
-        definition_html = (
-            definition
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-        )
+            definition_html = (
+                definition
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            )
 
-        card_html = f"""
-```
-
+            card_html = f"""
 <!DOCTYPE html>
-
 <html>
-
 <head>
-
 <style>
 
 body {{
@@ -3700,17 +3652,13 @@ body {{
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     padding: 20px;
     text-align: center;
-
     border-radius: 12px;
     backface-visibility: hidden;
-
     font-family: Arial, sans-serif;
 }}
 
@@ -3729,43 +3677,37 @@ body {{
 }}
 
 </style>
-
 </head>
 
 <body>
 
 <div class="flip-card">
 
-<div class="flip-card-inner">
+    <div class="flip-card-inner">
 
-<div class="flip-card-front">
-{term_html}
-</div>
+        <div class="flip-card-front">
+            {term_html}
+        </div>
 
-<div class="flip-card-back">
-{definition_html}
-</div>
+        <div class="flip-card-back">
+            {definition_html}
+        </div>
 
-</div>
+    </div>
 
 </div>
 
 </body>
-
 </html>
 """
 
-```
-        with cols[i % 3]:
+            with cols[i % 3]:
 
-            components.html(
-                card_html,
-                height=190,
-                scrolling=False
-            )
-
-
-# ======================================================
+                components.html(
+                    card_html,
+                    height=190,
+                    scrolling=False
+                )# ======================================================
 # DISPLAY QUIZ
 # ======================================================
 
@@ -3873,7 +3815,7 @@ if st.session_state.quiz_data:
             st.session_state.quiz_data = None
 
             st.rerun()
-```
+
 # ==========================================================
 # CHAT SETTINGS
 # ==========================================================
