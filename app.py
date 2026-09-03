@@ -73,6 +73,12 @@ st.markdown("""
 st.markdown(
     """
 <style>
+[data-testid="stSidebarCollapseButton"] {
+        display: none !important;
+    }
+[data-testid="collapsedControl"] {
+        display: none !important;
+    }
 
 a[aria-label="App Creator Avatar"] {
     display: none !important;
