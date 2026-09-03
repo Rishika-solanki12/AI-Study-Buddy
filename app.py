@@ -4552,7 +4552,7 @@ with chat_tab:
     )
 
 
-    # ==========================================================
+        # ==========================================================
     # PROCESS NEW MESSAGE FIRST
     # ==========================================================
 
@@ -4568,31 +4568,30 @@ with chat_tab:
 
             st.stop()
 
+        try:
 
-        # ======================================================
-        # SAVE USER MESSAGE
-        # ======================================================
+            # ==================================================
+            # SAVE USER MESSAGE
+            # ==================================================
 
-        st.session_state.messages.append({
-            "role": "user",
-            "content": prompt
-        })
+            st.session_state.messages.append({
+                "role": "user",
+                "content": prompt
+            })
 
-
-        
 
             # ==================================================
             # MEMORY
             # ==================================================
 
-    try:
+            try:
 
                 memory_context = get_memory_context(
                     prompt,
                     max_memories=8
                 )
 
-    except Exception:
+            except Exception:
 
                 memory_context = (
                     "No long-term memory is available "
@@ -4604,8 +4603,9 @@ with chat_tab:
             # DOCUMENT RETRIEVAL
             # ==================================================
 
-    document_context = ""
-    if st.session_state.vector_store is not None:
+            document_context = ""
+
+            if st.session_state.vector_store is not None:
 
                 try:
 
@@ -4928,42 +4928,3 @@ ANSWER STYLE
             })
 
             st.rerun()
-
-
-# ==========================================================
-# MEMORY SIDEBAR
-# ==========================================================
-
-st.sidebar.markdown("---")
-
-st.sidebar.subheader(
-    "🧠 Long-Term Memory"
-)
-
-current_memories = load_all_memories()
-
-if current_memories:
-
-    st.sidebar.success(
-        f"🧠 {len(current_memories)} memory item(s) saved"
-    )
-
-else:
-
-    st.sidebar.info(
-        "No long-term memories saved yet."
-    )
-
-
-if st.sidebar.button(
-    "🗑️ Forget My Long-Term Memory",
-    key="forget_long_term_memory"
-):
-
-    delete_all_memories()
-
-    st.sidebar.success(
-        "✅ Long-term memory deleted."
-    )
-
-    st.rerun()
