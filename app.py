@@ -29,6 +29,9 @@ from huggingface_hub import InferenceClient
 from ddgs import DDGS
 import requests
 from pathlib import Path
+import uuid
+from datetime import datetime
+import hashlib
 
 # ==========================================================
 # HUGGING FACE SECRET SETUP
@@ -1200,9 +1203,6 @@ st.write(
 )
 
 
-# ==========================================================
-# MAIN APP TABS
-# ==========================================================
 
 # ==========================================================
 # AUTO OPEN MAIN CHAT
@@ -1309,7 +1309,6 @@ if camera_photo is not None:
     all_uploaded_files.append(
         camera_photo
     )
-
 
 # ==========================================================
 # LANGUAGE
@@ -1623,22 +1622,21 @@ if all_uploaded_files:
     # IMAGE PROCESSING
     # ======================================================
 
-    if image_files:
+if image_files:
 
-        st.sidebar.markdown("---")
+    st.sidebar.markdown("---")
 
-        st.sidebar.subheader(
-            "📸 Uploaded Image"
-        )
+    st.sidebar.subheader(
+        "📸 Images Ready for Analysis"
+    )
 
-        img_to_process = image_files[0]
+    for preview_image in image_files:
 
         st.sidebar.image(
-            img_to_process,
-            caption=img_to_process.name,
+            preview_image,
+            caption=preview_image.name,
             use_container_width=True
         )
-
         image_sentence_count = st.sidebar.selectbox(
             "📝 Image Explanation Length:",
             list(range(1, 11)),
@@ -1655,12 +1653,37 @@ if all_uploaded_files:
         # ANALYZE IMAGE
         # ==================================================
 
-        if st.sidebar.button(
-            "🔍 Analyze Image",
-            use_container_width=True,
-            key="analyze_image_button"
-        ):
+if st.sidebar.button(
+    "🔍 Analyze Image",
+    use_container_width=True,
+    key="analyze_image_button"
+):
 
+    for img_to_process in image_files:
+
+        current_image_bytes = img_to_process.getvalue()
+
+        if not current_image_bytes:
+            continue
+
+        current_image_hash = hashlib.md5(
+            current_image_bytes
+        ).hexdigest()
+
+        current_image_key = (
+            f"{current_image_hash}"
+            f"__{translation_language}"
+        )
+
+        if current_image_key in st.session_state.get(
+            "analyzed_image_keys",
+            []
+        ):
+            continue
+
+        with st.spinner(
+            f"AI is analyzing {img_to_process.name}..."
+        ):
             with st.spinner(
                 "AI is looking at your image..."
             ):
@@ -1884,33 +1907,29 @@ TEXT:
                     st.session_state.speaker_text = None
                     st.session_state.speaker_text_language = None
 
-                    current_image_key = (
-                        f"{img_to_process.name}"
-                        f"__{translation_language}"
-                    )
+if "analyzed_image_keys" not in st.session_state:
 
-                    if (
-                        st.session_state.analyzed_image_name
-                        != current_image_key
-                    ):
+    st.session_state.analyzed_image_keys = []
 
-                        st.session_state.messages.append({
-                            "role": "user",
-                            "content":
-                            f"📸 User uploaded image: "
-                            f"{img_to_process.name}"
-                        })
 
-                        st.session_state.messages.append({
-                            "role": "assistant",
-                            "content":
-                            image_explanation
-                        })
+if current_image_key not in st.session_state.analyzed_image_keys:
 
-                        st.session_state.analyzed_image_name = (
-                            current_image_key
-                        )
+    st.session_state.messages.append({
+        "role": "user",
+        "content":
+        f"📸 User uploaded image: "
+        f"{img_to_process.name}"
+    })
 
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content":
+        image_explanation
+    })
+
+    st.session_state.analyzed_image_keys.append(
+        current_image_key
+    )
                     st.success(
                         f"✅ Image explanation generated "
                         f"in {translation_language}!"
