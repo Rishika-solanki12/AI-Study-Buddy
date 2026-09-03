@@ -3519,15 +3519,15 @@ with files_tab:
 
     # DISPLAY SUMMARY
     if st.session_state.messages:
-        ...
+        pass
 
     # DISPLAY MIND MAP
     if st.session_state.get("mindmap_dot"):
-        ...
+        pass
 
     # DISPLAY FLASHCARDS
     if st.session_state.flashcards:
-        ...
+        pass
 
     # ======================================================
     # DISPLAY QUIZ
