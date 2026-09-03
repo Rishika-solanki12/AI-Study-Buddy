@@ -4815,40 +4815,7 @@ The user must see only the final answer.
 """
 
 
-        # ==================================================
-        # ONE MODEL CALL ONLY
-        # ==================================================
-
-        with st.spinner(
-            "🤖 Thinking..."
-        ):
-
-            response = get_llm().invoke(
-                [
-                    SystemMessage(
-                        content=system_prompt
-                    ),
-                    HumanMessage(
-                        content=prompt
-                    )
-                ]
-            )
-
-        answer = response_to_text(
-            response
-        )
-
-        answer = remove_thinking(
-            answer
-        ).strip()
-
-        if not answer:
-
-            raise RuntimeError(
-                "AI returned an empty response."
-            )
-
-
+                
         # ==================================================
         # REAL IMAGE SEARCH — ONLY ONCE
         # ==================================================
