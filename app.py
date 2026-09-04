@@ -240,27 +240,17 @@ VISION_MODEL = "qwen/qwen3.6-27b"
 
 
 # ==========================================================
-# SAFE MODEL CREATION
+# SAFE VISION MODEL CREATION
 # ==========================================================
-
-@st.cache_resource
-def get_llm():
-
-    return ChatGroq(
-        api_key=get_groq_api_key(),
-        model=TEXT_MODEL,
-        temperature=0
-    )
-
 
 def get_vision_llm():
 
     return ChatGroq(
         api_key=get_groq_api_key(),
         model=VISION_MODEL,
-        temperature=0
+        temperature=0,
+        max_tokens=800
     )
-
 
 # ==========================================================
 # SAFE RESPONSE TEXT EXTRACTION
@@ -2261,40 +2251,37 @@ if st.sidebar.button(
             f"AI is analyzing {img_to_process.name}..."
         ):
 
-            with st.spinner(
-                "AI is looking at your image..."
-            ):
+            try:
 
-                try:
+                image_bytes = (
+                    img_to_process.getvalue()
+                )
 
-                    image_bytes = (
-                        img_to_process.getvalue()
+                if not image_bytes:
+
+                    raise ValueError(
+                        "Image data is empty."
                     )
 
-                    if not image_bytes:
+                image_base64 = (
+                    base64.b64encode(
+                        image_bytes
+                    ).decode("utf-8")
+                )
 
-                        raise ValueError(
-                            "Image data is empty."
-                        )
+                mime_type = (
+                    img_to_process.type
+                    or "image/jpeg"
+                )
 
-                    image_base64 = (
-                        base64.b64encode(
-                            image_bytes
-                        ).decode("utf-8")
-                    )
-
-                    mime_type = (
-                        img_to_process.type
-                        or "image/jpeg"
-                    )
-
-                    image_prompt = f"""
-Analyze the provided image.
+                image_prompt = f"""
+Analyze the provided image carefully.
 
 Generate EXACTLY {image_sentence_count} sentences
-describing the visible content.
+describing only the visible content of the image.
 
 TARGET LANGUAGE:
+
 {translation_language}
 
 LANGUAGE RULES:
@@ -2304,16 +2291,23 @@ LANGUAGE RULES:
 STRICT RULES:
 
 1. Exactly {image_sentence_count} sentences.
-2. Describe ONLY what is visible.
-3. Do not guess hidden information.
-4. Use simple student-friendly language.
-5. No heading.
-6. No greeting.
-7. No markdown.
-8. No bullets.
-9. No numbering.
-10. No emojis.
-11. Return only final explanation.
+2. Describe ONLY what is visibly present in the image.
+3. Do not guess hidden, missing, blurry, or uncertain information.
+4. Do not claim that the image is unavailable.
+5. Do not say that you cannot see or analyze the image.
+6. Do not say "I am not able to find the image".
+7. Do not say "I cannot analyze the image".
+8. Do not ask the user to upload the image again.
+9. Do not provide image-search websites.
+10. Do not provide links to image websites.
+11. Use simple student-friendly language.
+12. No heading.
+13. No greeting.
+14. No markdown.
+15. No bullets.
+16. No numbering.
+17. No emojis.
+18. Return ONLY the final image description.
 
 If Hindi:
 Use Devanagari script.
@@ -2322,411 +2316,432 @@ If Hinglish:
 Use natural Roman Hindi mixed with English.
 """
 
-                    vision_llm = get_vision_llm()
+                vision_llm = get_vision_llm()
 
-                    message = HumanMessage(
-                        content=[
-                            {
-                                "type": "text",
-                                "text": image_prompt
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url":
-                                    f"data:{mime_type};base64,{image_base64}"
-                                }
+                message = HumanMessage(
+                    content=[
+                        {
+                            "type": "text",
+                            "text": image_prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url":
+                                f"data:{mime_type};base64,{image_base64}"
                             }
-                        ]
-                    )
+                        }
+                    ]
+                )
 
-                    response = vision_llm.invoke(
-                        [message]
-                    )
+                response = vision_llm.invoke(
+                    [message]
+                )
 
-                    # ==================================================
-                    # TEMPORARY DEBUG
-                    # ==================================================
+                # ==================================================
+                # SAFE IMAGE RESPONSE EXTRACTION
+                # ==================================================
 
-                    st.write(
-                        "DEBUG RESPONSE TYPE:",
-                        type(response).__name__
-                    )
+                image_explanation = ""
 
-                    st.write(
-                        "DEBUG RESPONSE CONTENT TYPE:",
-                        type(
-                            getattr(
-                                response,
-                                "content",
-                                None
-                            )
-                        ).__name__
-                    )
+                try:
 
-                    st.write(
-                        "DEBUG RESPONSE CONTENT:",
-                        repr(
-                            getattr(
-                                response,
-                                "content",
-                                None
-                            )
+                    image_explanation = (
+                        response_to_text(
+                            response
                         )
                     )
 
-                    # ==================================================
-                    # SAFE IMAGE RESPONSE EXTRACTION
-                    # ==================================================
+                except Exception:
 
                     image_explanation = ""
 
+                # ==================================================
+                # FALLBACK FOR STRUCTURED MODEL RESPONSES
+                # ==================================================
+
+                if not image_explanation:
+
                     try:
 
-                        image_explanation = (
-                            response_to_text(
-                                response
-                            )
+                        response_content = getattr(
+                            response,
+                            "content",
+                            None
                         )
+
+                        if isinstance(
+                            response_content,
+                            str
+                        ):
+
+                            image_explanation = (
+                                response_content
+                            )
+
+                        elif isinstance(
+                            response_content,
+                            list
+                        ):
+
+                            extracted_parts = []
+
+                            for content_item in response_content:
+
+                                if isinstance(
+                                    content_item,
+                                    dict
+                                ):
+
+                                    if content_item.get(
+                                        "text"
+                                    ):
+
+                                        extracted_parts.append(
+                                            str(
+                                                content_item.get(
+                                                    "text"
+                                                )
+                                            )
+                                        )
+
+                                    elif content_item.get(
+                                        "content"
+                                    ):
+
+                                        extracted_parts.append(
+                                            str(
+                                                content_item.get(
+                                                    "content"
+                                                )
+                                            )
+                                        )
+
+                                else:
+
+                                    item_text = getattr(
+                                        content_item,
+                                        "text",
+                                        None
+                                    )
+
+                                    if item_text:
+
+                                        extracted_parts.append(
+                                            str(
+                                                item_text
+                                            )
+                                        )
+
+                            image_explanation = (
+                                " ".join(
+                                    extracted_parts
+                                )
+                            )
 
                     except Exception:
 
                         image_explanation = ""
 
-                    # ==================================================
-                    # FALLBACK FOR STRUCTURED MODEL RESPONSES
-                    # ==================================================
-
-                    if not image_explanation:
-
-                        try:
-
-                            response_content = getattr(
-                                response,
-                                "content",
-                                None
-                            )
-
-                            if isinstance(
-                                response_content,
-                                str
-                            ):
-
-                                image_explanation = (
-                                    response_content
-                                )
-
-                            elif isinstance(
-                                response_content,
-                                list
-                            ):
-
-                                extracted_parts = []
-
-                                for content_item in response_content:
-
-                                    if isinstance(
-                                        content_item,
-                                        dict
-                                    ):
-
-                                        if content_item.get(
-                                            "text"
-                                        ):
-
-                                            extracted_parts.append(
-                                                str(
-                                                    content_item.get(
-                                                        "text"
-                                                    )
-                                                )
-                                            )
-
-                                        elif content_item.get(
-                                            "content"
-                                        ):
-
-                                            extracted_parts.append(
-                                                str(
-                                                    content_item.get(
-                                                        "content"
-                                                    )
-                                                )
-                                            )
-
-                                    else:
-
-                                        item_text = getattr(
-                                            content_item,
-                                            "text",
-                                            None
-                                        )
-
-                                        if item_text:
-
-                                            extracted_parts.append(
-                                                str(
-                                                    item_text
-                                                )
-                                            )
-
-                                image_explanation = (
-                                    " ".join(
-                                        extracted_parts
-                                    )
-                                )
-
-                        except Exception:
-
-                            image_explanation = ""
-
-                    image_explanation = (
-                        str(
-                            image_explanation
-                        ).strip()
-                    )
-
-                    # ==================================================
-                    # REMOVE THINKING / REASONING SAFELY
-                    # ==================================================
-
-                    # Handle both normal and escaped think tags:
-                    # <think>...</think>
-                    # \<think>...\</think>
-
-                    image_explanation = re.sub(
-                        r"\\?<think\b[^>]*>.*?\\?</think>",
-                        "",
-                        image_explanation,
-                        flags=re.DOTALL | re.IGNORECASE
-                    )
-
-                    # If only an opening think tag remains,
-                    # remove everything before the final answer.
-                    image_explanation = re.sub(
-                        r"\\?</?think\b[^>]*>",
-                        "",
-                        image_explanation,
-                        flags=re.IGNORECASE
-                    )
-
-                    # Existing helper kept as an additional safety layer.
-                    image_explanation = (
-                        remove_thinking(
-                            image_explanation
-                        )
-                    )
-
-                    image_explanation = re.sub(
-                        r"```.*?```",
-                        "",
-                        image_explanation,
-                        flags=re.DOTALL
-                    ).strip()
-
-                    image_explanation = re.sub(
-                        r"^(answer|response|description)\s*:\s*",
-                        "",
-                        image_explanation,
-                        flags=re.IGNORECASE
-                    ).strip()
-
-                    if not image_explanation:
-
-                        raise ValueError(
-                            "Image model returned an empty response."
-                        )
-
-                    # ==================================================
-                    # SENTENCE COUNTING
-                    # ==================================================
-
-                    # Normalize escaped whitespace/tags that can
-                    # interfere with sentence detection.
-                    image_explanation = re.sub(
-                        r"\\+",
-                        "",
+                image_explanation = (
+                    str(
                         image_explanation
                     ).strip()
+                )
 
-                    # Split after sentence-ending punctuation.
-                    # The final sentence is also handled even when
-                    # there is no whitespace after the last punctuation.
-                    image_sentences = re.split(
-                        r'(?<=[.!?।॥])(?:\s+|$)',
+                # ==================================================
+                # REMOVE THINKING / REASONING
+                # ==================================================
+
+                image_explanation = re.sub(
+                    r"\\?<think\b[^>]*>.*?\\?</think>",
+                    "",
+                    image_explanation,
+                    flags=re.DOTALL | re.IGNORECASE
+                )
+
+                image_explanation = re.sub(
+                    r"\\?</?think\b[^>]*>",
+                    "",
+                    image_explanation,
+                    flags=re.IGNORECASE
+                )
+
+                image_explanation = (
+                    remove_thinking(
                         image_explanation
                     )
+                )
 
-                    image_sentences = [
-                        sentence.strip()
-                        for sentence in image_sentences
-                        if sentence.strip()
+                image_explanation = re.sub(
+                    r"```.*?```",
+                    "",
+                    image_explanation,
+                    flags=re.DOTALL
+                ).strip()
+
+                image_explanation = re.sub(
+                    r"^(answer|response|description)\s*:\s*",
+                    "",
+                    image_explanation,
+                    flags=re.IGNORECASE
+                ).strip()
+
+                # ==================================================
+                # REMOVE UNHELPFUL IMAGE-ACCESS RESPONSES
+                # ==================================================
+
+                image_explanation = re.sub(
+                    r"(?i)^(i\s+am\s+not\s+able\s+to\s+find\s+the\s+image[.!]?\s*)+$",
+                    "",
+                    image_explanation
+                ).strip()
+
+                image_explanation = re.sub(
+                    r"(?i)^(i\s+(?:cannot|can't)\s+(?:see|analyze|access)\s+the\s+image[.!]?\s*)+$",
+                    "",
+                    image_explanation
+                ).strip()
+
+                if not image_explanation:
+
+                    raise ValueError(
+                        "Image model returned an empty response."
+                    )
+
+                # ==================================================
+                # SENTENCE COUNTING
+                # ==================================================
+
+                image_explanation = re.sub(
+                    r"\\+",
+                    "",
+                    image_explanation
+                ).strip()
+
+                image_sentences = re.split(
+                    r'(?<=[.!?।॥])(?:\s+|$)',
+                    image_explanation
+                )
+
+                image_sentences = [
+                    sentence.strip()
+                    for sentence in image_sentences
+                    if sentence.strip()
+                ]
+
+                # ==================================================
+                # LINE-BASED FALLBACK
+                # ==================================================
+
+                if len(image_sentences) < image_sentence_count:
+
+                    line_sentences = [
+                        line.strip()
+                        for line in image_explanation.splitlines()
+                        if line.strip()
                     ]
 
-                    # ==================================================
-                    # LINE-BASED FALLBACK
-                    # ==================================================
-
-                    if len(image_sentences) < image_sentence_count:
-
-                        line_sentences = [
-                            line.strip()
-                            for line in image_explanation.splitlines()
-                            if line.strip()
-                        ]
-
-                        if len(line_sentences) >= image_sentence_count:
-
-                            image_sentences = (
-                                line_sentences
-                            )
-
-                    # ==================================================
-                    # SAFE SENTENCE NORMALIZATION
-                    # ==================================================
-
-                    if len(image_sentences) > image_sentence_count:
+                    if len(line_sentences) >= image_sentence_count:
 
                         image_sentences = (
-                            image_sentences[
-                                :image_sentence_count
-                            ]
+                            line_sentences
                         )
 
-                    if len(image_sentences) != image_sentence_count:
+                # ==================================================
+                # SAFE SENTENCE NORMALIZATION
+                # ==================================================
 
-                        raise ValueError(
-                            f"AI generated "
-                            f"{len(image_sentences)} "
-                            f"sentences instead of "
-                            f"{image_sentence_count}."
-                        )
+                if len(image_sentences) > image_sentence_count:
 
-                    image_explanation = " ".join(
-                        image_sentences
+                    image_sentences = (
+                        image_sentences[
+                            :image_sentence_count
+                        ]
                     )
 
-                    # ==================================================
-                    # HINDI SAFETY
-                    # ==================================================
+                if len(image_sentences) != image_sentence_count:
 
-                    if translation_language == "Hindi":
+                    raise ValueError(
+                        f"AI generated "
+                        f"{len(image_sentences)} "
+                        f"sentences instead of "
+                        f"{image_sentence_count}."
+                    )
 
-                        devanagari_count = len(
-                            re.findall(
-                                r"[\u0900-\u097F]",
-                                image_explanation
-                            )
+                image_explanation = " ".join(
+                    image_sentences
+                )
+
+                # ==================================================
+                # HINDI SAFETY
+                # ==================================================
+
+                if translation_language == "Hindi":
+
+                    devanagari_count = len(
+                        re.findall(
+                            r"[\u0900-\u097F]",
+                            image_explanation
                         )
+                    )
 
-                        latin_count = len(
-                            re.findall(
-                                r"[A-Za-z]",
-                                image_explanation
-                            )
+                    latin_count = len(
+                        re.findall(
+                            r"[A-Za-z]",
+                            image_explanation
                         )
+                    )
 
-                        if latin_count > devanagari_count:
+                    if latin_count > devanagari_count:
 
-                            hindi_prompt = f"""
-Convert this text into pure Hindi.
+                        hindi_prompt = f"""
+Convert the following image description into pure Hindi.
 
-Use Devanagari script only.
+Use Devanagari script.
 
 Keep EXACTLY {image_sentence_count} sentences.
+
+Do not add any new information.
+
+Do not say that the image cannot be seen,
+found, accessed, or analyzed.
+
+Return ONLY the final Hindi description.
 
 TEXT:
 
 {image_explanation}
 """
 
-                            hindi_response = (
-                                get_vision_llm().invoke(
-                                    [
-                                        HumanMessage(
-                                            content=hindi_prompt
-                                        )
-                                    ]
-                                )
+                        hindi_response = (
+                            get_vision_llm().invoke(
+                                [
+                                    HumanMessage(
+                                        content=hindi_prompt
+                                    )
+                                ]
                             )
-
-                            image_explanation = (
-                                response_to_text(
-                                    hindi_response
-                                )
-                            )
-
-                            # Handle escaped think tags here too.
-                            image_explanation = re.sub(
-                                r"\\?<think\b[^>]*>.*?\\?</think>",
-                                "",
-                                image_explanation,
-                                flags=re.DOTALL | re.IGNORECASE
-                            )
-
-                            image_explanation = (
-                                remove_thinking(
-                                    image_explanation
-                                )
-                            )
-
-                            image_explanation = (
-                                image_explanation.strip()
-                            )
-
-                    st.session_state.image_explanation = (
-                        image_explanation
-                    )
-
-                    st.session_state.image_speaker_text = None
-                    st.session_state.image_speaker_text_language = None
-                    st.session_state.speaker_text = None
-                    st.session_state.speaker_text_language = None
-
-                    # ==================================================
-                    # INITIALIZE ANALYZED IMAGE KEYS
-                    # ==================================================
-
-                    if "analyzed_image_keys" not in st.session_state:
-
-                        st.session_state.analyzed_image_keys = []
-
-                    # ==================================================
-                    # SAVE IMAGE MESSAGE
-                    # ==================================================
-
-                    if current_image_key not in st.session_state.analyzed_image_keys:
-
-                        st.session_state.messages.append({
-                            "role": "user",
-                            "content":
-                            f"📸 User uploaded image: "
-                            f"{img_to_process.name}"
-                        })
-
-                        st.session_state.messages.append({
-                            "role": "assistant",
-                            "content":
-                            image_explanation
-                        })
-
-                        st.session_state.analyzed_image_keys.append(
-                            current_image_key
                         )
 
-                    st.success(
-                        f"✅ Image explanation generated "
-                        f"in {translation_language}!"
+                        image_explanation = (
+                            response_to_text(
+                                hindi_response
+                            )
+                        )
+
+                        # Handle escaped think tags.
+                        image_explanation = re.sub(
+                            r"\\?<think\b[^>]*>.*?\\?</think>",
+                            "",
+                            image_explanation,
+                            flags=re.DOTALL | re.IGNORECASE
+                        )
+
+                        image_explanation = (
+                            remove_thinking(
+                                image_explanation
+                            )
+                        )
+
+                        image_explanation = (
+                            image_explanation.strip()
+                        )
+
+                        # Remove accidental heading/label.
+                        image_explanation = re.sub(
+                            r"^(answer|response|description)\s*:\s*",
+                            "",
+                            image_explanation,
+                            flags=re.IGNORECASE
+                        ).strip()
+
+                # ==================================================
+                # FINAL SENTENCE CHECK AFTER HINDI CONVERSION
+                # ==================================================
+
+                final_sentences = re.split(
+                    r'(?<=[.!?।॥])(?:\s+|$)',
+                    image_explanation
+                )
+
+                final_sentences = [
+                    sentence.strip()
+                    for sentence in final_sentences
+                    if sentence.strip()
+                ]
+
+                if len(final_sentences) > image_sentence_count:
+
+                    final_sentences = (
+                        final_sentences[
+                            :image_sentence_count
+                        ]
                     )
 
-                    st.rerun()
-
-                except Exception as e:
-
-                    st.sidebar.error(
-                        f"❌ Error analyzing image: {e}"
+                    image_explanation = " ".join(
+                        final_sentences
                     )
-# ==========================================================
+
+                # ==================================================
+                # SAVE IMAGE EXPLANATION
+                # ==================================================
+
+                st.session_state.image_explanation = (
+                    image_explanation
+                )
+
+                st.session_state.image_speaker_text = None
+                st.session_state.image_speaker_text_language = None
+                st.session_state.speaker_text = None
+                st.session_state.speaker_text_language = None
+
+                # ==================================================
+                # INITIALIZE ANALYZED IMAGE KEYS
+                # ==================================================
+
+                if "analyzed_image_keys" not in st.session_state:
+
+                    st.session_state.analyzed_image_keys = []
+
+                # ==================================================
+                # SAVE IMAGE MESSAGE
+                # ==================================================
+
+                if (
+                    current_image_key
+                    not in st.session_state.analyzed_image_keys
+                ):
+
+                    st.session_state.messages.append({
+                        "role": "user",
+                        "content":
+                        f"📸 User uploaded image: "
+                        f"{img_to_process.name}"
+                    })
+
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content":
+                        image_explanation
+                    })
+
+                    st.session_state.analyzed_image_keys.append(
+                        current_image_key
+                    )
+
+                st.success(
+                    f"✅ Image explanation generated "
+                    f"in {translation_language}!"
+                )
+
+                st.rerun()
+
+            except Exception as e:
+
+                st.sidebar.error(
+                    f"❌ Error analyzing image: {e}"
+                )# ==========================================================
 # DOCUMENT STUDY TOOLS
 # ==========================================================
 
