@@ -3099,32 +3099,54 @@ Never reveal:
 with files_tab:
 
     # ==========================================================
-    # CURRENT READER SOURCE
+    # COMMON SMART READER SOURCE
     # ==========================================================
 
-    reader_source_text = None
-    reader_source_type = None
+    reader_sources = {}
 
     if st.session_state.get(
         "document_explanation"
     ):
 
-        reader_source_text = (
+        reader_sources["📚 Document"] = (
+            "Document",
             st.session_state.document_explanation
         )
 
-        reader_source_type = "Document"
-
-    elif st.session_state.get(
+    if st.session_state.get(
         "image_explanation"
     ):
 
-        reader_source_text = (
+        reader_sources["🖼️ Image"] = (
+            "Image",
             st.session_state.image_explanation
         )
 
-        reader_source_type = "Image"
+    reader_source_text = None
+    reader_source_type = None
 
+    if reader_sources:
+
+        if len(reader_sources) > 1:
+
+            selected_reader_source = st.selectbox(
+                "📖 Smart Reader Source:",
+                list(reader_sources.keys()),
+                key="common_reader_source"
+            )
+
+        else:
+
+            selected_reader_source = next(
+                iter(reader_sources)
+            )
+
+        (
+            reader_source_type,
+            reader_source_text
+        ) = reader_sources[
+            selected_reader_source
+        ]
 
     # ==========================================================
     # DISPLAY DOCUMENT
@@ -3176,6 +3198,29 @@ with files_tab:
         )
 
 
+
+    # ==========================================================
+    # COMMON SMART READER
+    # ==========================================================
+
+    if reader_source_text:
+
+        st.markdown("---")
+
+        st.subheader(
+            f"🔊📖 Common Smart Reader — "
+            f"{reader_source_type}"
+        )
+
+        st.caption(
+            f"Reading language: {listen_language}"
+        )
+
+        render_common_smart_reader(
+            reader_source_text,
+            reader_source_type,
+            listen_language
+        )
 
 # ==========================================================
 # SMART STUDY TOOLS
