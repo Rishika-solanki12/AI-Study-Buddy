@@ -1193,6 +1193,566 @@ def clean_text_for_speech(text):
 
 
 # ==========================================================
+# COMMON SMART READER
+# ==========================================================
+
+def split_reader_sentences(text):
+
+    if not text:
+        return []
+
+    cleaned = remove_thinking(
+        str(text)
+    ).strip()
+
+    if not cleaned:
+        return []
+
+    raw_sentences = re.split(
+        r"(?<=[.!?।॥])\s+",
+        cleaned
+    )
+
+    sentences = []
+
+    for sentence in raw_sentences:
+
+        sentence = clean_text_for_speech(
+            sentence
+        ).strip()
+
+        if sentence:
+            sentences.append(
+                sentence
+            )
+
+    return sentences
+
+
+def render_common_smart_reader(
+    reader_text,
+    reader_source_type,
+    listen_language
+):
+
+    sentences = split_reader_sentences(
+        reader_text
+    )
+
+    if not sentences:
+
+        st.warning(
+            "⚠️ No readable sentences found."
+        )
+
+        return
+
+    reader_language = SPEAKER_LANGUAGE_CODES.get(
+        listen_language,
+        "en-US"
+    )
+
+    sentences_json = json.dumps(
+        sentences,
+        ensure_ascii=False
+    )
+
+    language_json = json.dumps(
+        reader_language
+    )
+
+    source_json = json.dumps(
+        reader_source_type
+    )
+
+    reader_height = min(
+        max(
+            460,
+            250 + (len(sentences) * 48)
+        ),
+        900
+    )
+
+    reader_html = f"""
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<style>
+
+* {{
+    box-sizing: border-box;
+}}
+
+body {{
+    margin: 0;
+    padding: 12px;
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    background: transparent;
+}}
+
+.reader-wrapper {{
+    width: 100%;
+}}
+
+.reader-title {{
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}}
+
+.reader-controls {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}}
+
+.reader-controls button {{
+    border: 1px solid #d1d5db;
+    background: white;
+    padding: 9px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}}
+
+.reader-controls button:hover {{
+    background: #f3f4f6;
+}}
+
+.reader-sentences {{
+    max-height: 650px;
+    overflow-y: auto;
+    padding: 4px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}}
+
+.reader-sentence {{
+    padding: 12px 14px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    line-height: 1.6;
+    font-size: 16px;
+    transition: all 0.2s ease;
+}}
+
+.reader-sentence:hover {{
+    background: #f3f4f6;
+}}
+
+.reader-sentence.active {{
+    background: #e8f0fe;
+    outline: 2px solid #4f8cff;
+    font-weight: 600;
+}}
+
+.reader-status {{
+    margin-top: 10px;
+    font-size: 13px;
+    color: #666;
+}}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="reader-wrapper">
+
+    <div class="reader-title">
+        🔊 Smart Reader
+    </div>
+
+    <div class="reader-controls">
+
+        <button onclick="startReader()">
+            ▶️ Start
+        </button>
+
+        <button onclick="pauseReader()">
+            ⏸️ Pause
+        </button>
+
+        <button onclick="resumeReader()">
+            ▶️ Resume
+        </button>
+
+        <button onclick="stopReader()">
+            ⏹️ Stop
+        </button>
+
+    </div>
+
+    <div
+        id="sentenceContainer"
+        class="reader-sentences"
+    ></div>
+
+    <div
+        id="readerStatus"
+        class="reader-status"
+    >
+        Ready — click Start or any sentence.
+    </div>
+
+</div>
+
+<script>
+
+const sentences = {sentences_json};
+
+const readerLanguage = {language_json};
+
+const sourceType = {source_json};
+
+let currentIndex = 0;
+
+let currentUtterance = null;
+
+let isStopped = true;
+
+
+/* ========================================================
+   BUILD SENTENCE LIST
+   ======================================================== */
+
+const container =
+    document.getElementById(
+        "sentenceContainer"
+    );
+
+const status =
+    document.getElementById(
+        "readerStatus"
+    );
+
+
+sentences.forEach(
+    (sentence, index) => {{
+
+        const element =
+            document.createElement(
+                "div"
+            );
+
+        element.className =
+            "reader-sentence";
+
+        element.textContent =
+            (index + 1) + ". " + sentence;
+
+        element.dataset.index =
+            index;
+
+        element.onclick =
+            function() {{
+
+                startFrom(index);
+
+            }};
+
+        container.appendChild(
+            element
+        );
+
+    }}
+);
+
+
+/* ========================================================
+   HIGHLIGHT SENTENCE
+   ======================================================== */
+
+function highlightSentence(index) {{
+
+    const all =
+        document.querySelectorAll(
+            ".reader-sentence"
+        );
+
+    all.forEach(
+        item => {{
+            item.classList.remove(
+                "active"
+            );
+        }}
+    );
+
+    if (
+        index >= 0 &&
+        index < all.length
+    ) {{
+
+        const active =
+            all[index];
+
+        active.classList.add(
+            "active"
+        );
+
+        active.scrollIntoView({{
+            behavior: "smooth",
+            block: "center"
+        }});
+
+    }}
+}}
+
+
+/* ========================================================
+   SPEAK SENTENCE
+   ======================================================== */
+
+function speakCurrentSentence() {{
+
+    if (
+        currentIndex < 0 ||
+        currentIndex >= sentences.length
+    ) {{
+
+        finishReader();
+
+        return;
+
+    }}
+
+    window.speechSynthesis.cancel();
+
+    const text =
+        sentences[currentIndex];
+
+    currentUtterance =
+        new SpeechSynthesisUtterance(
+            text
+        );
+
+    currentUtterance.lang =
+        readerLanguage;
+
+    currentUtterance.rate =
+        0.95;
+
+    currentUtterance.pitch =
+        1;
+
+    highlightSentence(
+        currentIndex
+    );
+
+    status.textContent =
+        "🔊 Reading sentence " +
+        (currentIndex + 1) +
+        " of " +
+        sentences.length;
+
+    currentUtterance.onend =
+        function() {{
+
+            if (isStopped) {{
+                return;
+            }}
+
+            currentIndex++;
+
+            if (
+                currentIndex <
+                sentences.length
+            ) {{
+
+                speakCurrentSentence();
+
+            }} else {{
+
+                finishReader();
+
+            }}
+
+        }};
+
+    currentUtterance.onerror =
+        function() {{
+
+            if (!isStopped) {{
+
+                status.textContent =
+                    "⚠️ Speech could not continue.";
+
+            }}
+
+        }};
+
+    window.speechSynthesis.speak(
+        currentUtterance
+    );
+
+}}
+
+
+/* ========================================================
+   START FROM SENTENCE
+   ======================================================== */
+
+function startFrom(index) {{
+
+    window.speechSynthesis.cancel();
+
+    currentIndex = index;
+
+    isStopped = false;
+
+    speakCurrentSentence();
+
+}}
+
+
+/* ========================================================
+   START
+   ======================================================== */
+
+function startReader() {{
+
+    startFrom(0);
+
+}}
+
+
+/* ========================================================
+   PAUSE
+   ======================================================== */
+
+function pauseReader() {{
+
+    if (
+        window.speechSynthesis.speaking
+    ) {{
+
+        window.speechSynthesis.pause();
+
+        status.textContent =
+            "⏸️ Reading paused.";
+
+    }}
+
+}}
+
+
+/* ========================================================
+   RESUME
+   ======================================================== */
+
+function resumeReader() {{
+
+    if (
+        window.speechSynthesis.paused
+    ) {{
+
+        window.speechSynthesis.resume();
+
+        status.textContent =
+            "▶️ Reading resumed.";
+
+    }} else if (
+        !window.speechSynthesis.speaking &&
+        !isStopped
+    ) {{
+
+        speakCurrentSentence();
+
+    }}
+
+}}
+
+
+/* ========================================================
+   STOP
+   ======================================================== */
+
+function stopReader() {{
+
+    isStopped = true;
+
+    window.speechSynthesis.cancel();
+
+    status.textContent =
+        "⏹️ Reading stopped.";
+
+    const all =
+        document.querySelectorAll(
+            ".reader-sentence"
+        );
+
+    all.forEach(
+        item => {{
+            item.classList.remove(
+                "active"
+            );
+        }}
+    );
+
+}}
+
+
+/* ========================================================
+   FINISH
+   ======================================================== */
+
+function finishReader() {{
+
+    isStopped = true;
+
+    window.speechSynthesis.cancel();
+
+    highlightSentence(
+        sentences.length - 1
+    );
+
+    status.textContent =
+        "✅ Reading completed.";
+
+}}
+
+
+/* ========================================================
+   CLEANUP
+   ======================================================== */
+
+window.addEventListener(
+    "beforeunload",
+    function() {{
+        window.speechSynthesis.cancel();
+    }}
+);
+
+</script>
+
+</body>
+
+</html>
+"""
+
+    components.html(
+        reader_html,
+        height=reader_height,
+        scrolling=False
+    )
+
+
+
+
+# ==========================================================
 # TITLE
 # ==========================================================
 
