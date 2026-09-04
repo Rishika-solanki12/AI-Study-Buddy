@@ -2720,43 +2720,25 @@ TEXT:
                     st.session_state.analyzed_image_keys = []
 
                 # ==================================================
-                # SAVE IMAGE MESSAGE
-                # ==================================================
+# SAVE IMAGE ANALYSIS
+# ==================================================
+#
+# Image analysis is intentionally NOT added to
+# Main Chat messages.
+#
+# The existing image_explanation session-state
+# remains unchanged so Files & Study continues
+# to show the image analysis normally.
+# ==================================================
 
-                if (
-                    current_image_key
-                    not in st.session_state.analyzed_image_keys
-                ):
+if (
+    current_image_key
+    not in st.session_state.analyzed_image_keys
+):
 
-                    st.session_state.messages.append({
-                        "role": "user",
-                        "content":
-                        f"📸 User uploaded image: "
-                        f"{img_to_process.name}"
-                    })
-
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content":
-                        image_explanation
-                    })
-
-                    st.session_state.analyzed_image_keys.append(
-                        current_image_key
-                    )
-
-                st.success(
-                    f"✅ Image explanation generated "
-                    f"in {translation_language}!"
-                )
-
-                st.rerun()
-
-            except Exception as e:
-
-                st.sidebar.error(
-                    f"❌ Error analyzing image: {e}"
-                )
+    st.session_state.analyzed_image_keys.append(
+        current_image_key
+    )
 # ==========================================================
 # DOCUMENT STUDY TOOLS
 # ==========================================================
