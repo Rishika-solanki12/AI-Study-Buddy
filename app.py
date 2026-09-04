@@ -3898,117 +3898,15 @@ if st.session_state.get("mindmap_dot"):
         )
 
 # ======================================================
-# DISPLAY FLASHCARDS — FLIP HOVER
+# DISPLAY FLASHCARDS — ISOLATED FLIP HOVER
 # ======================================================
 
 if st.session_state.flashcards:
 
     st.markdown("---")
 
-    st.subheader("🗂️ Flashcards")
-
-    st.markdown(
-        """
-        <style>
-
-        .flashcard-wrapper {
-            perspective: 1000px;
-            width: 100%;
-            height: 260px;
-            margin-bottom: 25px;
-        }
-
-        .flashcard {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transition: transform 0.7s ease;
-            transform-style: preserve-3d;
-        }
-
-        .flashcard-wrapper:hover .flashcard {
-            transform: rotateY(180deg);
-        }
-
-        .flashcard-front,
-        .flashcard-back {
-            position: absolute;
-            inset: 0;
-
-            width: 100%;
-            height: 100%;
-
-            box-sizing: border-box;
-            padding: 30px;
-
-            border-radius: 20px;
-
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-
-            text-align: center;
-
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
-
-            box-shadow: 0 10px 30px rgba(0,0,0,0.20);
-        }
-
-        .flashcard-front {
-            background: linear-gradient(
-                135deg,
-                #667eea,
-                #764ba2
-            );
-
-            color: white;
-        }
-
-        .flashcard-back {
-            background: linear-gradient(
-                135deg,
-                #11998e,
-                #38ef7d
-            );
-
-            color: white;
-
-            transform: rotateY(180deg);
-        }
-
-        .flashcard-number {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            opacity: 0.85;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .flashcard-term {
-            font-size: 30px;
-            font-weight: 700;
-            line-height: 1.25;
-        }
-
-        .flashcard-definition {
-            font-size: 18px;
-            font-weight: 500;
-            line-height: 1.6;
-        }
-
-        .flashcard-hint {
-            position: absolute;
-            bottom: 18px;
-            font-size: 12px;
-            opacity: 0.8;
-        }
-
-        </style>
-        """,
-        unsafe_allow_html=True
+    st.subheader(
+        "🗂️ Flashcards"
     )
 
     for i, card in enumerate(
@@ -4024,50 +3922,248 @@ if st.session_state.flashcards:
             card.get("definition", "")
         )
 
-        st.markdown(
-            f"""
-<div class="flashcard-wrapper">
-
-    <div class="flashcard">
-
-        <div class="flashcard-front">
-
-            <div class="flashcard-number">
-                Card {i}
-            </div>
-
-            <div class="flashcard-term">
-                {term}
-            </div>
-
-            <div class="flashcard-hint">
-                ✨ Hover to flip
-            </div>
-
-        </div>
-
-        <div class="flashcard-back">
-
-            <div class="flashcard-number">
-                Card {i} • Definition
-            </div>
-
-            <div class="flashcard-definition">
-                {definition}
-            </div>
-
-            <div class="flashcard-hint">
-                ↩️ Move mouse away to flip back
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-            """,
-            unsafe_allow_html=True
+        # Prevent HTML inside generated text
+        term = (
+            term
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
         )
+
+        definition = (
+            definition
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+        )
+
+        components.html(
+            f"""
+            <!DOCTYPE html>
+
+            <html>
+
+            <head>
+
+                <style>
+
+                    * {{
+                        box-sizing: border-box;
+                    }}
+
+                    body {{
+                        margin: 0;
+                        padding: 0;
+                        background: transparent;
+                        font-family: Arial, sans-serif;
+                    }}
+
+                    .flashcard-wrapper {{
+                        width: 100%;
+                        height: 270px;
+                        perspective: 1000px;
+                    }}
+
+                    .flashcard {{
+                        position: relative;
+
+                        width: 100%;
+                        height: 250px;
+
+                        transition:
+                            transform 0.7s ease;
+
+                        transform-style: preserve-3d;
+
+                        cursor: pointer;
+                    }}
+
+                    .flashcard-wrapper:hover
+                    .flashcard {{
+                        transform: rotateY(180deg);
+                    }}
+
+                    .flashcard-front,
+                    .flashcard-back {{
+
+                        position: absolute;
+
+                        width: 100%;
+                        height: 100%;
+
+                        top: 0;
+                        left: 0;
+
+                        border-radius: 20px;
+
+                        padding: 30px;
+
+                        display: flex;
+
+                        flex-direction: column;
+
+                        justify-content: center;
+
+                        align-items: center;
+
+                        text-align: center;
+
+                        backface-visibility: hidden;
+
+                        -webkit-backface-visibility: hidden;
+
+                        box-shadow:
+                            0 10px 30px
+                            rgba(0, 0, 0, 0.20);
+
+                        overflow: hidden;
+                    }}
+
+                    /* =========================
+                       FRONT
+                    ========================= */
+
+                    .flashcard-front {{
+
+                        background:
+                            linear-gradient(
+                                135deg,
+                                #667eea,
+                                #764ba2
+                            );
+
+                        color: white;
+                    }}
+
+                    /* =========================
+                       BACK
+                    ========================= */
+
+                    .flashcard-back {{
+
+                        background:
+                            linear-gradient(
+                                135deg,
+                                #11998e,
+                                #38ef7d
+                            );
+
+                        color: white;
+
+                        transform:
+                            rotateY(180deg);
+                    }}
+
+                    .flashcard-number {{
+
+                        font-size: 14px;
+
+                        font-weight: 600;
+
+                        letter-spacing: 1px;
+
+                        text-transform: uppercase;
+
+                        opacity: 0.85;
+
+                        margin-bottom: 15px;
+                    }}
+
+                    .flashcard-term {{
+
+                        font-size: 30px;
+
+                        font-weight: 700;
+
+                        line-height: 1.25;
+
+                        word-break: break-word;
+                    }}
+
+                    .flashcard-definition {{
+
+                        font-size: 18px;
+
+                        font-weight: 500;
+
+                        line-height: 1.6;
+
+                        max-width: 90%;
+
+                        word-break: break-word;
+                    }}
+
+                    .flashcard-hint {{
+
+                        position: absolute;
+
+                        bottom: 15px;
+
+                        font-size: 12px;
+
+                        opacity: 0.80;
+                    }}
+
+                </style>
+
+            </head>
+
+            <body>
+
+                <div class="flashcard-wrapper">
+
+                    <div class="flashcard">
+
+                        <!-- FRONT -->
+
+                        <div class="flashcard-front">
+
+                            <div class="flashcard-number">
+                                Card {i}
+                            </div>
+
+                            <div class="flashcard-term">
+                                {term}
+                            </div>
+
+                            <div class="flashcard-hint">
+                                ✨ Hover to flip
+                            </div>
+
+                        </div>
+
+
+                        <!-- BACK -->
+
+                        <div class="flashcard-back">
+
+                            <div class="flashcard-number">
+                                Card {i} • Definition
+                            </div>
+
+                            <div class="flashcard-definition">
+                                {definition}
+                            </div>
+
+                            <div class="flashcard-hint">
+                                ↩️ Move mouse away to flip back
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </body>
+
+            </html>
+            """,
+            height=280,
+            scrolling=False
+        )    
     # ======================================================
     # DISPLAY QUIZ
     # ======================================================
