@@ -239,6 +239,21 @@ TEXT_MODEL = "openai/gpt-oss-20b"
 VISION_MODEL = "qwen/qwen3.6-27b"
 
 
+
+
+
+# ==========================================================
+# SAFE TEXT MODEL CREATION
+# ==========================================================
+
+def get_llm():
+
+    return ChatGroq(
+        api_key=get_groq_api_key(),
+        model=TEXT_MODEL,
+        temperature=0
+    )
+    
 # ==========================================================
 # SAFE VISION MODEL CREATION
 # ==========================================================
