@@ -4678,7 +4678,7 @@ with chat_tab:
                             )
 
 
-                            except Exception as image_error:
+                        except Exception as image_error:
 
                             print(
                                 "Image display error:",
