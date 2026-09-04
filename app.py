@@ -1760,7 +1760,7 @@ If Hinglish:
 Use natural Roman Hindi mixed with English.
 """
 
-                    vision_llm = get_vision_llm()
+                                        vision_llm = get_vision_llm()
 
                     message = HumanMessage(
                         content=[
@@ -1782,6 +1782,51 @@ Use natural Roman Hindi mixed with English.
                         [message]
                     )
 
+                    # ==================================================
+                    # TEMPORARY DEBUG
+                    # ==================================================
+
+                    st.write(
+                        "DEBUG RESPONSE TYPE:",
+                        type(response).__name__
+                    )
+
+                    st.write(
+                        "DEBUG RESPONSE CONTENT TYPE:",
+                        type(
+                            getattr(
+                                response,
+                                "content",
+                                None
+                            )
+                        ).__name__
+                    )
+
+                    st.write(
+                        "DEBUG RESPONSE CONTENT:",
+                        repr(
+                            getattr(
+                                response,
+                                "content",
+                                None
+                            )
+                        )
+                    )
+
+                    image_explanation = (
+                        response_to_text(
+                            response
+                        )
+                    )
+
+
+
+
+
+                    
+
+
+                     
                     # ==================================================
                     # SAFE IMAGE RESPONSE EXTRACTION
                     # ==================================================
