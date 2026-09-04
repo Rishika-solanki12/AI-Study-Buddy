@@ -3838,33 +3838,34 @@ with files_tab:
         )
 
 
-    # ======================================================
-    # DISPLAY MIND MAP
-    # ======================================================
+# ======================================================
+# DISPLAY MIND MAP
+# ======================================================
 
-    if st.session_state.get("mindmap_dot"):
+if st.session_state.get("mindmap_dot"):
 
-        st.markdown("---")
+    st.markdown("---")
 
-        st.subheader(
-            "🧠 Mind Map"
+    st.subheader(
+        "🧠 Mind Map"
+    )
+
+    try:
+
+        st.graphviz_chart(
+            st.session_state.mindmap_dot
         )
 
-        try:
+    except Exception as e:
 
-            from graphviz import Source
+        st.error(
+            f"Mind Map display failed: {e}"
+        )
 
-            st.graphviz_chart(
-                st.session_state.mindmap_dot
-            )
-
-        except Exception:
-
-            st.code(
-                st.session_state.mindmap_dot,
-                language="dot"
-            )
-
+        st.code(
+            st.session_state.mindmap_dot,
+            language="dot"
+        )
 
     # ======================================================
     # DISPLAY FLASHCARDS
