@@ -177,6 +177,9 @@ DEFAULT_STATE = {
     "quiz_data": None,
     "flashcards": [],
 
+    "summary_result": None,
+    "mindmap_dot": None,
+   
     "mindmap_topics": [],
     "selected_mindmap_topic": None,
 
@@ -3446,14 +3449,11 @@ Requirements:
                     summary_prompt
                 )
 
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content":
-                        "## 📚 Quick Revision Summary\n\n"
-                        + summary_result
-                    }
+                st.session_state.summary_result = (
+                   summary_result
                 )
+
+                
 
                 st.rerun()
 
@@ -3821,17 +3821,86 @@ Return ONLY valid JSON:
 
 with files_tab:
 
+    # ======================================================
     # DISPLAY SUMMARY
-    if st.session_state.messages:
-        pass
+    # ======================================================
 
+    if st.session_state.get("summary_result"):
+
+        st.markdown("---")
+
+        st.subheader(
+            "📚 Quick Revision Summary"
+        )
+
+        st.markdown(
+            st.session_state.summary_result
+        )
+
+
+    # ======================================================
     # DISPLAY MIND MAP
-    if st.session_state.get("mindmap_dot"):
-        pass
+    # ======================================================
 
+    if st.session_state.get("mindmap_dot"):
+
+        st.markdown("---")
+
+        st.subheader(
+            "🧠 Mind Map"
+        )
+
+        try:
+
+            from graphviz import Source
+
+            st.graphviz_chart(
+                st.session_state.mindmap_dot
+            )
+
+        except Exception:
+
+            st.code(
+                st.session_state.mindmap_dot,
+                language="dot"
+            )
+
+
+    # ======================================================
     # DISPLAY FLASHCARDS
+    # ======================================================
+
     if st.session_state.flashcards:
-        pass
+
+        st.markdown("---")
+
+        st.subheader(
+            "🗂️ Flashcards"
+        )
+
+        for i, card in enumerate(
+            st.session_state.flashcards,
+            start=1
+        ):
+
+            with st.container(
+                border=True
+            ):
+
+                st.markdown(
+                    f"### Card {i}"
+                )
+
+                st.markdown(
+                    f"**Term:** "
+                    f"{card.get('term', '')}"
+                )
+
+                st.markdown(
+                    f"**Definition:** "
+                    f"{card.get('definition', '')}"
+                )
+
 
     # ======================================================
     # DISPLAY QUIZ
@@ -3938,7 +4007,6 @@ with files_tab:
                 st.session_state.quiz_data = None
 
                 st.rerun()
-
 
 # ==========================================================
 # CHAT SETTINGS
