@@ -3849,7 +3849,6 @@ Return ONLY valid JSON:
                     f"Flashcard error: {e}"
                 )
 
-
 with files_tab:
 
     # ======================================================
@@ -3899,40 +3898,205 @@ if st.session_state.get("mindmap_dot"):
         )
 
     # ======================================================
-    # DISPLAY FLASHCARDS
-    # ======================================================
+# DISPLAY FLASHCARDS — FLIP HOVER
+# ======================================================
 
-    if st.session_state.flashcards:
+if st.session_state.flashcards:
 
-        st.markdown("---")
+    st.markdown("---")
 
-        st.subheader(
-            "🗂️ Flashcards"
+    st.subheader(
+        "🗂️ Flashcards"
+    )
+
+    # ==================================================
+    # FLASHCARD CSS
+    # ==================================================
+
+    st.markdown(
+        """
+        <style>
+
+        .flashcard-wrapper {
+            perspective: 1000px;
+            width: 100%;
+            height: 260px;
+            margin-bottom: 25px;
+        }
+
+        .flashcard {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.7s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .flashcard-wrapper:hover .flashcard {
+            transform: rotateY(180deg);
+        }
+
+        .flashcard-front,
+        .flashcard-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+
+            border-radius: 18px;
+            padding: 28px;
+            box-sizing: border-box;
+
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+
+            text-align: center;
+
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, 0.18);
+
+            border: 2px solid rgba(255,255,255,0.35);
+        }
+
+        /* FRONT SIDE */
+
+        .flashcard-front {
+            background:
+                linear-gradient(
+                    135deg,
+                    #667eea,
+                    #764ba2
+                );
+
+            color: white;
+        }
+
+        /* BACK SIDE */
+
+        .flashcard-back {
+            background:
+                linear-gradient(
+                    135deg,
+                    #11998e,
+                    #38ef7d
+                );
+
+            color: white;
+
+            transform: rotateY(180deg);
+        }
+
+        .flashcard-number {
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0.85;
+            margin-bottom: 12px;
+
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .flashcard-term {
+            font-size: 30px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .flashcard-definition {
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1.6;
+        }
+
+        .flashcard-hint {
+            position: absolute;
+            bottom: 18px;
+
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+    # ==================================================
+    # DISPLAY EACH CARD
+    # ==================================================
+
+    for i, card in enumerate(
+        st.session_state.flashcards,
+        start=1
+    ):
+
+        term = card.get(
+            "term",
+            ""
         )
 
-        for i, card in enumerate(
-            st.session_state.flashcards,
-            start=1
-        ):
+        definition = card.get(
+            "definition",
+            ""
+        )
 
-            with st.container(
-                border=True
-            ):
+        st.markdown(
+            f"""
+            <div class="flashcard-wrapper">
 
-                st.markdown(
-                    f"### Card {i}"
-                )
+                <div class="flashcard">
 
-                st.markdown(
-                    f"**Term:** "
-                    f"{card.get('term', '')}"
-                )
+                    <!-- FRONT -->
 
-                st.markdown(
-                    f"**Definition:** "
-                    f"{card.get('definition', '')}"
-                )
+                    <div class="flashcard-front">
 
+                        <div class="flashcard-number">
+                            Card {i}
+                        </div>
+
+                        <div class="flashcard-term">
+                            {term}
+                        </div>
+
+                        <div class="flashcard-hint">
+                            ✨ Hover to flip
+                        </div>
+
+                    </div>
+
+
+                    <!-- BACK -->
+
+                    <div class="flashcard-back">
+
+                        <div class="flashcard-number">
+                            Card {i} • Definition
+                        </div>
+
+                        <div class="flashcard-definition">
+                            {definition}
+                        </div>
+
+                        <div class="flashcard-hint">
+                            ↩️ Move mouse away to flip back
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     # ======================================================
     # DISPLAY QUIZ
