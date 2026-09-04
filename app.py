@@ -1662,6 +1662,7 @@ if image_files:
     )
 
 
+````python
 # ==================================================
 # ANALYZE IMAGE
 # ==================================================
@@ -1781,10 +1782,115 @@ Use natural Roman Hindi mixed with English.
                         [message]
                     )
 
-                    image_explanation = (
-                        response_to_text(
-                            response
+                    # ==================================================
+                    # SAFE IMAGE RESPONSE EXTRACTION
+                    # ==================================================
+
+                    image_explanation = ""
+
+                    try:
+
+                        image_explanation = (
+                            response_to_text(
+                                response
+                            )
                         )
+
+                    except Exception:
+
+                        image_explanation = ""
+
+                    # ==================================================
+                    # FALLBACK FOR STRUCTURED MODEL RESPONSES
+                    # ==================================================
+
+                    if not image_explanation:
+
+                        try:
+
+                            response_content = getattr(
+                                response,
+                                "content",
+                                None
+                            )
+
+                            if isinstance(
+                                response_content,
+                                str
+                            ):
+
+                                image_explanation = (
+                                    response_content
+                                )
+
+                            elif isinstance(
+                                response_content,
+                                list
+                            ):
+
+                                extracted_parts = []
+
+                                for content_item in response_content:
+
+                                    if isinstance(
+                                        content_item,
+                                        dict
+                                    ):
+
+                                        if content_item.get(
+                                            "text"
+                                        ):
+
+                                            extracted_parts.append(
+                                                str(
+                                                    content_item.get(
+                                                        "text"
+                                                    )
+                                                )
+                                            )
+
+                                        elif content_item.get(
+                                            "content"
+                                        ):
+
+                                            extracted_parts.append(
+                                                str(
+                                                    content_item.get(
+                                                        "content"
+                                                    )
+                                                )
+                                            )
+
+                                    else:
+
+                                        item_text = getattr(
+                                            content_item,
+                                            "text",
+                                            None
+                                        )
+
+                                        if item_text:
+
+                                            extracted_parts.append(
+                                                str(
+                                                    item_text
+                                                )
+                                            )
+
+                                image_explanation = (
+                                    " ".join(
+                                        extracted_parts
+                                    )
+                                )
+
+                        except Exception:
+
+                            image_explanation = ""
+
+                    image_explanation = (
+                        str(
+                            image_explanation
+                        ).strip()
                     )
 
                     image_explanation = (
@@ -1859,7 +1965,10 @@ Use natural Roman Hindi mixed with English.
                         image_sentences
                     )
 
-                    # Hindi safety
+                    # ==================================================
+                    # HINDI SAFETY
+                    # ==================================================
+
                     if translation_language == "Hindi":
 
                         devanagari_count = len(
@@ -1964,6 +2073,7 @@ TEXT:
                     st.sidebar.error(
                         f"❌ Error analyzing image: {e}"
                     )
+````
 # ==========================================================
 # DOCUMENT STUDY TOOLS
 # ==========================================================
