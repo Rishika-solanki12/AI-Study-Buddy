@@ -4678,37 +4678,24 @@ with chat_tab:
                             )
 
 
-    # ======================================================
-    # PLAY LAST CHAT RESPONSE
-    # ======================================================
+                            except Exception as image_error:
 
-    if (
-        st.session_state.messages
-        and
-        st.session_state.messages[-1].get(
-            "role"
-        ) == "assistant"
-    ):
+                            print(
+                                "Image display error:",
+                                image_error
+                            )
 
-        last_answer = clean_text_for_speech(
-            st.session_state.messages[-1].get(
-                "content",
-                ""
-            )
-        )
-
-        if (
-            last_answer
-            and
-            Path("chat_reply.mp3").exists()
-        ):
-
-            st.audio(
-                "chat_reply.mp3",
-                format="audio/mp3"
-            )
-
-
+                    # ==================================================
+                    # INDIVIDUAL AUDIO PLAYER FOR THIS MESSAGE
+                    # ==================================================
+                    
+                    audio_file = message.get("audio_file")
+                    
+                    if audio_file and Path(audio_file).exists():
+                        st.audio(
+                            audio_file,
+                            format="audio/mp3"
+                        )
 # ==========================================================
 # CHAT INPUT
 #
@@ -5241,8 +5228,8 @@ The user must see only the final answer.
             pass
 
 
-        # ==================================================
-        # CREATE CHAT AUDIO
+# ==================================================
+        # CREATE UNIQUE CHAT AUDIO
         # ==================================================
 
         try:
@@ -5255,20 +5242,26 @@ The user must see only the final answer.
 
             if clean_answer:
 
+                # Generate a unique MP3 filename using UUID
+                unique_filename = f"chat_audio_{uuid.uuid4().hex}.mp3"
+
                 tts = gTTS(
                     text=clean_answer,
                     lang=selected_lang
                 )
 
                 tts.save(
-                    "chat_reply.mp3"
+                    unique_filename
                 )
+
+                # Save this unique audio filename inside the last assistant message
+                if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
+                    st.session_state.messages[-1]["audio_file"] = unique_filename
 
         except Exception:
 
             # TTS failure must never break chat.
             pass
-
 
         # ==================================================
         # AUTO OPEN MAIN CHAT — KEY CHANGE
