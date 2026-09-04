@@ -2372,20 +2372,6 @@ Use natural Roman Hindi mixed with English.
                         )
                     )
 
-                    image_explanation = (
-                        response_to_text(
-                            response
-                        )
-                    )
-
-
-
-
-
-                    
-
-
-                     
                     # ==================================================
                     # SAFE IMAGE RESPONSE EXTRACTION
                     # ==================================================
@@ -2497,6 +2483,31 @@ Use natural Roman Hindi mixed with English.
                         ).strip()
                     )
 
+                    # ==================================================
+                    # REMOVE THINKING / REASONING SAFELY
+                    # ==================================================
+
+                    # Handle both normal and escaped think tags:
+                    # <think>...</think>
+                    # \<think>...\</think>
+
+                    image_explanation = re.sub(
+                        r"\\?<think\b[^>]*>.*?\\?</think>",
+                        "",
+                        image_explanation,
+                        flags=re.DOTALL | re.IGNORECASE
+                    )
+
+                    # If only an opening think tag remains,
+                    # remove everything before the final answer.
+                    image_explanation = re.sub(
+                        r"\\?</?think\b[^>]*>",
+                        "",
+                        image_explanation,
+                        flags=re.IGNORECASE
+                    )
+
+                    # Existing helper kept as an additional safety layer.
                     image_explanation = (
                         remove_thinking(
                             image_explanation
@@ -2523,8 +2534,23 @@ Use natural Roman Hindi mixed with English.
                             "Image model returned an empty response."
                         )
 
+                    # ==================================================
+                    # SENTENCE COUNTING
+                    # ==================================================
+
+                    # Normalize escaped whitespace/tags that can
+                    # interfere with sentence detection.
+                    image_explanation = re.sub(
+                        r"\\+",
+                        "",
+                        image_explanation
+                    ).strip()
+
+                    # Split after sentence-ending punctuation.
+                    # The final sentence is also handled even when
+                    # there is no whitespace after the last punctuation.
                     image_sentences = re.split(
-                        r'(?<=[.!?।॥])\s+',
+                        r'(?<=[.!?।॥])(?:\s+|$)',
                         image_explanation
                     )
 
@@ -2533,6 +2559,10 @@ Use natural Roman Hindi mixed with English.
                         for sentence in image_sentences
                         if sentence.strip()
                     ]
+
+                    # ==================================================
+                    # LINE-BASED FALLBACK
+                    # ==================================================
 
                     if len(image_sentences) < image_sentence_count:
 
@@ -2547,6 +2577,10 @@ Use natural Roman Hindi mixed with English.
                             image_sentences = (
                                 line_sentences
                             )
+
+                    # ==================================================
+                    # SAFE SENTENCE NORMALIZATION
+                    # ==================================================
 
                     if len(image_sentences) > image_sentence_count:
 
@@ -2619,10 +2653,22 @@ TEXT:
                                 )
                             )
 
+                            # Handle escaped think tags here too.
+                            image_explanation = re.sub(
+                                r"\\?<think\b[^>]*>.*?\\?</think>",
+                                "",
+                                image_explanation,
+                                flags=re.DOTALL | re.IGNORECASE
+                            )
+
                             image_explanation = (
                                 remove_thinking(
                                     image_explanation
                                 )
+                            )
+
+                            image_explanation = (
+                                image_explanation.strip()
                             )
 
                     st.session_state.image_explanation = (
@@ -2677,7 +2723,6 @@ TEXT:
                     st.sidebar.error(
                         f"❌ Error analyzing image: {e}"
                     )
-
 # ==========================================================
 # DOCUMENT STUDY TOOLS
 # ==========================================================
