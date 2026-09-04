@@ -5139,6 +5139,43 @@ The user must see only the final answer.
 
 
         # ==================================================
+        # REAL IMAGE SEARCH INTENT
+        # ==================================================
+
+        image_search_requested = (
+            st.session_state.get(
+                "real_image_search_enabled",
+                True
+            )
+            and should_search_images(prompt)
+        )
+
+        if image_search_requested:
+
+            system_prompt += """
+
+REAL IMAGE SEARCH RULE:
+
+The application will separately search for and display
+real images related to the user's request below your answer.
+
+Do NOT say:
+- "I can't provide an image"
+- "I cannot provide images"
+- "I can't provide a photo"
+- "I don't have access to images"
+- "Here are websites where you can find images"
+- "You can search Shutterstock, Getty Images, etc."
+
+Do NOT provide external image-search websites merely because
+the user asked to see an image.
+
+The application handles the actual image display separately.
+Simply answer the user's request naturally and, if appropriate,
+briefly introduce the real images that will appear below.
+"""
+
+        # ==================================================
         # ONE MODEL CALL ONLY
         # ==================================================
 
@@ -5178,13 +5215,7 @@ The user must see only the final answer.
 
         real_image_results = []
 
-        if (
-            st.session_state.get(
-                "real_image_search_enabled",
-                True
-            )
-            and should_search_images(prompt)
-        ):
+        if image_search_requested:
 
             try:
 
@@ -5213,7 +5244,6 @@ The user must see only the final answer.
             "content": answer,
             "images": real_image_results
         })
-
 
         # ==================================================
         # LONG-TERM MEMORY
