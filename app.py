@@ -1760,7 +1760,7 @@ If Hinglish:
 Use natural Roman Hindi mixed with English.
 """
 
-                                        vision_llm = get_vision_llm()
+                    vision_llm = get_vision_llm()
 
                     message = HumanMessage(
                         content=[
