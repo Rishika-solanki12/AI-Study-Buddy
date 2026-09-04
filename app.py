@@ -1626,9 +1626,9 @@ if all_uploaded_files:
             )
 
 
-    # ======================================================
-    # IMAGE PROCESSING
-    # ======================================================
+# ======================================================
+# IMAGE PROCESSING
+# ======================================================
 
 if image_files:
 
@@ -1645,16 +1645,21 @@ if image_files:
             caption=preview_image.name,
             use_container_width=True
         )
-        image_sentence_count = st.sidebar.selectbox(
-            "📝 Image Explanation Length:",
-            list(range(1, 30)),
-            index=2,
-            key="image_sentence_count"
-        )
 
-        st.sidebar.info(
-            f"🌐 Image language: {translation_language}"
-        )
+    # ==================================================
+    # IMAGE EXPLANATION LENGTH
+    # ==================================================
+
+    image_sentence_count = st.sidebar.selectbox(
+        "📝 Image Explanation Length:",
+        list(range(1, 30)),
+        index=2,
+        key="image_sentence_count"
+    )
+
+    st.sidebar.info(
+        f"🌐 Image language: {translation_language}"
+    )
 
 
 # ==================================================
@@ -1959,7 +1964,6 @@ TEXT:
                     st.sidebar.error(
                         f"❌ Error analyzing image: {e}"
                     )
-
 # ==========================================================
 # DOCUMENT STUDY TOOLS
 # ==========================================================
