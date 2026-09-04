@@ -2536,35 +2536,37 @@ with files_tab:
                         )
 
 
-        # ======================================================
-        # SMART READER
-        # ======================================================
+```python
+# ======================================================
+# SMART READER
+# ======================================================
 
-        if speech_text:
+if speech_text:
 
-            sentences = re.split(
-                r'(?<=[.!?।॥])\s+',
-                speech_text
-            )
+    sentences = re.split(
+        r'(?<=[.!?।॥])\s+',
+        speech_text
+    )
 
-            sentences = [
-                sentence.strip()
-                for sentence in sentences
-                if sentence.strip()
-            ]
+    sentences = [
+        sentence.strip()
+        for sentence in sentences
+        if sentence.strip()
+    ]
 
-            sentences_json = json.dumps(
-                sentences,
-                ensure_ascii=False
-            )
+    sentences_json = json.dumps(
+        sentences,
+        ensure_ascii=False
+    )
 
-            language_code = (
-                SPEAKER_LANGUAGE_CODES[
-                    listen_language
-                ]
-            )
+    language_code = (
+        SPEAKER_LANGUAGE_CODES.get(
+            listen_language,
+            "en-US"
+        )
+    )
 
-            reader_html = """
+    reader_html = """
 <!DOCTYPE html>
 <html>
 
@@ -2688,6 +2690,11 @@ const readerStatus =
 
 let currentSentence = 0;
 
+
+/* ==================================================
+   VOICE SELECTION
+   ================================================== */
+
 function getBestVoice(language) {
 
     const voices =
@@ -2703,10 +2710,12 @@ function getBestVoice(language) {
     let voice =
         voices.find(
             function(v) {
+
                 return (
                     v.lang &&
                     v.lang.toLowerCase() === target
                 );
+
             }
         );
 
@@ -2720,17 +2729,20 @@ function getBestVoice(language) {
     voice =
         voices.find(
             function(v) {
+
                 return (
                     v.lang &&
                     v.lang.toLowerCase().startsWith(
                         shortLanguage
                     )
                 );
+
             }
         );
 
     return voice || null;
 }
+
 
 window.speechSynthesis.onvoiceschanged =
     function() {
@@ -2738,6 +2750,11 @@ window.speechSynthesis.onvoiceschanged =
         window.speechSynthesis.getVoices();
 
     };
+
+
+/* ==================================================
+   DISPLAY SENTENCES
+   ================================================== */
 
 readerSentences.forEach(
     function(sentence, index) {
@@ -2771,6 +2788,11 @@ readerSentences.forEach(
     }
 );
 
+
+/* ==================================================
+   CLEAR HIGHLIGHT
+   ================================================== */
+
 function clearHighlight() {
 
     document
@@ -2789,6 +2811,11 @@ function clearHighlight() {
 
 }
 
+
+/* ==================================================
+   START FROM SELECTED SENTENCE
+   ================================================== */
+
 function startFrom(index) {
 
     window.speechSynthesis.cancel();
@@ -2799,6 +2826,11 @@ function startFrom(index) {
 
 }
 
+
+/* ==================================================
+   START READER
+   ================================================== */
+
 function startReader() {
 
     window.speechSynthesis.cancel();
@@ -2808,6 +2840,11 @@ function startReader() {
     speakCurrent();
 
 }
+
+
+/* ==================================================
+   SPEAK CURRENT SENTENCE
+   ================================================== */
 
 function speakCurrent() {
 
@@ -2825,7 +2862,9 @@ function speakCurrent() {
 
     }
 
+
     clearHighlight();
+
 
     const elements =
         document.querySelectorAll(
@@ -2834,6 +2873,7 @@ function speakCurrent() {
 
     const current =
         elements[currentSentence];
+
 
     if (current) {
 
@@ -2848,6 +2888,7 @@ function speakCurrent() {
 
     }
 
+
     const utterance =
         new SpeechSynthesisUtterance(
             readerSentences[
@@ -2855,13 +2896,16 @@ function speakCurrent() {
             ]
         );
 
+
     utterance.lang =
         readerLanguage;
+
 
     const selectedVoice =
         getBestVoice(
             readerLanguage
         );
+
 
     if (selectedVoice) {
 
@@ -2870,17 +2914,20 @@ function speakCurrent() {
 
     }
 
+
     utterance.rate =
         0.90;
 
     utterance.pitch =
         1.0;
 
+
     readerStatus.textContent =
         "🔊 Reading sentence "
         + (currentSentence + 1)
         + " of "
         + readerSentences.length;
+
 
     utterance.onend =
         function() {
@@ -2891,6 +2938,7 @@ function speakCurrent() {
 
         };
 
+
     utterance.onerror =
         function() {
 
@@ -2899,29 +2947,57 @@ function speakCurrent() {
 
         };
 
+
     window.speechSynthesis.speak(
         utterance
     );
 
 }
 
+
+/* ==================================================
+   PAUSE
+   ================================================== */
+
 function pauseReader() {
 
-    window.speechSynthesis.pause();
+    if (
+        window.speechSynthesis.speaking
+    ) {
 
-    readerStatus.textContent =
-        "⏸️ Reading paused";
+        window.speechSynthesis.pause();
+
+        readerStatus.textContent =
+            "⏸️ Reading paused";
+
+    }
 
 }
+
+
+/* ==================================================
+   RESUME
+   ================================================== */
 
 function resumeReader() {
 
-    window.speechSynthesis.resume();
+    if (
+        window.speechSynthesis.paused
+    ) {
 
-    readerStatus.textContent =
-        "▶️ Reading resumed";
+        window.speechSynthesis.resume();
+
+        readerStatus.textContent =
+            "▶️ Reading resumed";
+
+    }
 
 }
+
+
+/* ==================================================
+   STOP
+   ================================================== */
 
 function stopReader() {
 
@@ -2942,23 +3018,24 @@ function stopReader() {
 </html>
 """
 
-            reader_html = reader_html.replace(
-                "__SENTENCES__",
-                sentences_json
-            )
 
-            reader_html = reader_html.replace(
-                "__LANGUAGE__",
-                language_code
-            )
+    reader_html = reader_html.replace(
+        "__SENTENCES__",
+        sentences_json
+    )
 
-            components.html(
-                reader_html,
-                height=600,
-                scrolling=True
-            )
+    reader_html = reader_html.replace(
+        "__LANGUAGE__",
+        language_code
+    )
 
 
+    components.html(
+        reader_html,
+        height=600,
+        scrolling=True
+    )
+```
 # ==========================================================
 # SMART STUDY TOOLS
 # ==========================================================
