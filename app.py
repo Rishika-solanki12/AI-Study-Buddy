@@ -2543,7 +2543,10 @@ with files_tab:
 # ======================================================
 # SMART READER
 # ======================================================
-
+speech_text = st.session_state.get(
+    "speaker_text",
+    ""
+)
 if speech_text:
 
     sentences = re.split(
