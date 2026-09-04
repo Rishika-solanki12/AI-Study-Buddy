@@ -4677,25 +4677,29 @@ with chat_tab:
                                 image_error
                             )
 
+            # ==================================================
+            # INDIVIDUAL AUDIO PLAYER FOR THIS MESSAGE
+            # ==================================================
 
-                        except Exception as image_error:
+            if role == "assistant":
 
-                            print(
-                                "Image display error:",
-                                image_error
-                            )
+                audio_file = message.get(
+                    "audio_file",
+                    ""
+                )
 
-                    # ==================================================
-                    # INDIVIDUAL AUDIO PLAYER FOR THIS MESSAGE
-                    # ==================================================
-                    
-                    audio_file = message.get("audio_file")
-                    
-                    if audio_file and Path(audio_file).exists():
-                        st.audio(
-                            audio_file,
-                            format="audio/mp3"
-                        )
+                if (
+                    audio_file
+                    and
+                    Path(audio_file).exists()
+                ):
+
+                    st.audio(
+                        audio_file,
+                        format="audio/mp3"
+                    )
+
+
 # ==========================================================
 # CHAT INPUT
 #
@@ -4791,7 +4795,6 @@ with input_container:
         "</div>",
         unsafe_allow_html=True
     )
-
 
 # ==========================================================
 # VOICE INPUT
