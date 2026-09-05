@@ -2718,26 +2718,29 @@ TEXT:
 
                     st.session_state.analyzed_image_keys = []
 
- # ==================================================
-# SAVE IMAGE ANALYSIS
-# ==================================================
-#
-# Image analysis is intentionally NOT added to
-# Main Chat messages.
-#
-# The existing image_explanation session-state
-# remains unchanged so Files & Study continues
-# to show the image analysis normally.
-# ==================================================
+                 # ==================================================
+                # SAVE IMAGE ANALYSIS
+                # ==================================================
+                #
+                # Image analysis is intentionally NOT added to
+                # Main Chat messages.
+                #
+                # Files & Study ke existing image explanation
+                # ko koi change nahi kiya ja raha.
+                # ==================================================
 
-    if (
-        current_image_key
-        not in st.session_state.analyzed_image_keys
-    ):
+                if (
+                    current_image_key
+                    not in st.session_state.analyzed_image_keys
+                ):
 
-        st.session_state.analyzed_image_keys.append(
-            current_image_key
-        )
+                    st.session_state.analyzed_image_keys.append(
+                        current_image_key
+                    )
+
+
+
+
 # ==========================================================
 # DOCUMENT STUDY TOOLS
 # ==========================================================
