@@ -1810,9 +1810,14 @@ if "main_app_tab" not in st.session_state:
 
 st.markdown("""
 <style>
-button[data-baseweb="tab"] {
-    font-size: 18px !important;
-    font-weight: 700 !important;
+div[data-baseweb="tab-list"] button {
+    font-size: 20px !important;
+    font-weight: 800 !important;
+}
+
+div[data-baseweb="tab-list"] button p {
+    font-size: 20px !important;
+    font-weight: 800 !important;
 }
 </style>
 """, unsafe_allow_html=True)
