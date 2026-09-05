@@ -4960,124 +4960,142 @@ with chat_tab:
         "💬 Chat with your Study Buddy"
     )
 
+        # ======================================================
+    # SCROLLABLE MAIN CHAT OUTPUT AREA
     # ======================================================
-    # DISPLAY COMPLETE CHAT HISTORY
-    # ======================================================
 
-    for message in st.session_state.messages:
+    chat_output = st.container(
+        height=600,
+        border=False
+    )
 
-        role = message.get(
-            "role",
-            "assistant"
-        )
+    with chat_output:
 
-        with st.chat_message(role):
+        # ==================================================
+        # LOADING AREA
+        #
+        # This placeholder is created ABOVE the input bars.
+        # Thinking / image-search loading will appear here.
+        # ==================================================
 
-            content = remove_thinking(
-                str(
-                    message.get(
-                        "content",
+        chat_loading_placeholder = st.empty()
+
+        # ==================================================
+        # DISPLAY COMPLETE CHAT HISTORY
+        # ==================================================
+
+        for message in st.session_state.messages:
+
+            role = message.get(
+                "role",
+                "assistant"
+            )
+
+            with st.chat_message(role):
+
+                content = remove_thinking(
+                    str(
+                        message.get(
+                            "content",
+                            ""
+                        )
+                    )
+                )
+
+                if content:
+
+                    st.markdown(
+                        content
+                    )
+
+                # ==========================================
+                # REAL IMAGES
+                # ==========================================
+
+                images = message.get(
+                    "images",
+                    []
+                )
+
+                if images:
+
+                    st.markdown(
+                        "### 🖼️ Related Real Images"
+                    )
+
+                    columns = st.columns(2)
+
+                    for i, image_data in enumerate(
+                        images
+                    ):
+
+                        with columns[i % 2]:
+
+                            try:
+
+                                image_bytes = (
+                                    image_data.get(
+                                        "image"
+                                    )
+                                )
+
+                                if image_bytes:
+
+                                    st.image(
+                                        image_bytes,
+                                        use_container_width=True
+                                    )
+
+                                title = image_data.get(
+                                    "title",
+                                    "Related Image"
+                                )
+
+                                if title:
+
+                                    st.caption(
+                                        title
+                                    )
+
+                                source_url = image_data.get(
+                                    "source",
+                                    ""
+                                )
+
+                                if source_url:
+
+                                    st.markdown(
+                                        f"[🔗 Open original source]({source_url})"
+                                    )
+
+                            except Exception as image_error:
+
+                                print(
+                                    "Image display error:",
+                                    image_error
+                                )
+
+                # ==========================================
+                # INDIVIDUAL AUDIO PLAYER
+                # ==========================================
+
+                if role == "assistant":
+
+                    audio_file = message.get(
+                        "audio_file",
                         ""
                     )
-                )
-            )
 
-            if content:
+                    if (
+                        audio_file
+                        and
+                        Path(audio_file).exists()
+                    ):
 
-                st.markdown(
-                    content
-                )
-
-
-            # ==================================================
-            # REAL IMAGES INSIDE THE SAME ASSISTANT MESSAGE
-            # ==================================================
-
-            images = message.get(
-                "images",
-                []
-            )
-
-            if images:
-
-                st.markdown(
-                    "### 🖼️ Related Real Images"
-                )
-
-                columns = st.columns(2)
-
-                for i, image_data in enumerate(
-                    images
-                ):
-
-                    with columns[i % 2]:
-
-                        try:
-
-                            image_bytes = (
-                                image_data.get(
-                                    "image"
-                                )
-                            )
-
-                            if image_bytes:
-
-                                st.image(
-                                    image_bytes,
-                                    use_container_width=True
-                                )
-
-                            title = image_data.get(
-                                "title",
-                                "Related Image"
-                            )
-
-                            if title:
-
-                                st.caption(
-                                    title
-                                )
-
-                            source_url = image_data.get(
-                                "source",
-                                ""
-                            )
-
-                            if source_url:
-
-                                st.markdown(
-                                    f"[🔗 Open original source]({source_url})"
-                                )
-
-                        except Exception as image_error:
-
-                            print(
-                                "Image display error:",
-                                image_error
-                            )
-
-            # ==================================================
-            # INDIVIDUAL AUDIO PLAYER FOR THIS MESSAGE
-            # ==================================================
-
-            if role == "assistant":
-
-                audio_file = message.get(
-                    "audio_file",
-                    ""
-                )
-
-                if (
-                    audio_file
-                    and
-                    Path(audio_file).exists()
-                ):
-
-                    st.audio(
-                        audio_file,
-                        format="audio/mp3"
-                    )
-
+                        st.audio(
+                            audio_file,
+                            format="audio/mp3"
+                        )
 
 # ==========================================================
 # CHAT INPUT
@@ -5510,25 +5528,22 @@ The user must see only the final answer.
 """
 
 
-        # ==================================================
-        # ONE MODEL CALL ONLY
-        # ==================================================
+with chat_loading_placeholder.container():
 
-        with st.spinner(
-            "🤖 Thinking..."
-        ):
+    with st.spinner(
+        "🤖 Thinking..."
+    ):
 
-            response = get_llm().invoke(
-                [
-                    SystemMessage(
-                        content=system_prompt
-                    ),
-                    HumanMessage(
-                        content=prompt
-                    )
-                ]
-            )
-
+        response = get_llm().invoke(
+            [
+                SystemMessage(
+                    content=system_prompt
+                ),
+                HumanMessage(
+                    content=prompt
+                )
+            ]
+        )
         answer = response_to_text(
             response
         )
@@ -5560,17 +5575,18 @@ The user must see only the final answer.
 
             try:
 
-                with st.spinner(
-                    "🌐 Finding real images..."
-                ):
-
-                    real_image_results = (
-                        search_real_images(
-                            prompt,
-                            max_results=4
+                with chat_loading_placeholder.container():
+                
+                    with st.spinner(
+                        "🌐 Finding real images..."
+                    ):
+                
+                        real_image_results = (
+                            search_real_images(
+                                prompt,
+                                max_results=4
+                            )
                         )
-                    )
-
             except Exception:
 
                 real_image_results = []
