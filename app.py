@@ -3280,17 +3280,23 @@ with files_tab:
 
 
     # ==========================================================
-    # COMMON SMART READER
-    # ==========================================================
+# SMART READER ON / OFF
+# ==========================================================
 
-    if reader_source_text:
+if reader_source_text:
 
-        st.markdown("---")
+    st.markdown("---")
 
-        st.subheader(
-            f"🔊📖 Common Smart Reader — "
-            f"{reader_source_type}"
-        )
+    if "smart_reader_enabled" not in st.session_state:
+        st.session_state.smart_reader_enabled = False
+
+    smart_reader_enabled = st.toggle(
+        "🔊 Smart Reader",
+        value=st.session_state.smart_reader_enabled,
+        key="smart_reader_enabled"
+    )
+
+    if smart_reader_enabled:
 
         st.caption(
             f"Reading language: {listen_language}"
@@ -3301,7 +3307,6 @@ with files_tab:
             reader_source_type,
             listen_language
         )
-
 # ==========================================================
 # SMART STUDY TOOLS
 # ==========================================================
