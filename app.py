@@ -48,6 +48,11 @@ if "HF_TOKEN" in st.secrets:
 # PAGE CONFIG
 # ==========================================================
 
+st.set_page_config(
+    page_title="AI Study Buddy",
+    page_icon="📚",
+    layout="wide"
+)
 
 st.set_option(
     "client.toolbarMode",
@@ -1790,34 +1795,50 @@ if "main_app_tab" not in st.session_state:
 
     st.session_state["main_app_tab"] = "📁 Files & Study"
 # ==========================================================
-# BIGGER MAIN TABS
+# BIGGER TAB TEXT
 # ==========================================================
 
 st.markdown("""
 <style>
 
-/* Tab buttons */
+/* ==========================================================
+   MAIN TABS
+   ========================================================== */
+
+/* Actual tab buttons */
 [data-baseweb="tab-list"] > button[data-baseweb="tab"] {
-    min-height: 60px !important;
-    padding: 12px 28px !important;
+    min-height: 58px !important;
+    padding: 10px 24px !important;
+    font-size: 24px !important;
+    font-weight: 800 !important;
 }
 
-/* Tab text */
+/* All text inside tab buttons */
 [data-baseweb="tab-list"] > button[data-baseweb="tab"] * {
-    font-size: 26px !important;
+    font-size: 24px !important;
     font-weight: 800 !important;
     line-height: 1.2 !important;
 }
 
-/* Space between tabs */
+/* Tab list spacing */
 [data-baseweb="tab-list"] {
-    gap: 12px !important;
+    gap: 10px !important;
+}
+
+/* Active tab */
+[data-baseweb="tab-list"] > button[aria-selected="true"] {
+    font-size: 24px !important;
+    font-weight: 800 !important;
+}
+
+/* Active tab text */
+[data-baseweb="tab-list"] > button[aria-selected="true"] * {
+    font-size: 24px !important;
+    font-weight: 800 !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
-
-
 files_tab, chat_tab = st.tabs(
     ["📁 Files & Study", "💬 Main Chat"],
     key="main_app_tab",
