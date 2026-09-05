@@ -1806,7 +1806,7 @@ if st.session_state.get("open_main_chat"):
 st.markdown("""
 <style>
 button[data-baseweb="tab"] {
-    font-size: 18px !important;
+    font-size: 22px !important;
     font-weight: 700 !important;
 }
 </style>
