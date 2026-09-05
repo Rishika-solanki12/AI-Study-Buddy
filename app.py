@@ -2741,33 +2741,33 @@ TEXT:
 
 
 
-# ==========================================================
-# DOCUMENT STUDY TOOLS
-# ==========================================================
-
-if st.session_state.vector_store is not None:
-
-    st.sidebar.markdown("---")
-
-    st.sidebar.subheader(
-        "🎓 Document Study Tools"
-    )
-
-    explanation_level = st.sidebar.selectbox(
-        "📊 Difficulty Level:",
-        [
-            "Easy",
-            "Medium",
-            "Hard"
-        ],
-        key="document_explanation_level"
-    )
-
-    exam_points = st.sidebar.checkbox(
-        "🎯 Include Exam Important Points",
-        value=True,
-        key="document_exam_points"
-    )
+    # ==========================================================
+    # DOCUMENT STUDY TOOLS
+    # ==========================================================
+    
+    if st.session_state.vector_store is not None:
+    
+        st.sidebar.markdown("---")
+    
+        st.sidebar.subheader(
+            "🎓 Document Study Tools"
+        )
+    
+        explanation_level = st.sidebar.selectbox(
+            "📊 Difficulty Level:",
+            [
+                "Easy",
+                "Medium",
+                "Hard"
+            ],
+            key="document_explanation_level"
+        )
+    
+        exam_points = st.sidebar.checkbox(
+            "🎯 Include Exam Important Points",
+            value=True,
+            key="document_exam_points"
+        )
 
     # ======================================================
     # EXPLANATION LEVEL
