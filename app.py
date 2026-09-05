@@ -60,6 +60,16 @@ st.set_option(
 )
 
 
+st.markdown("""
+<style>
+[data-baseweb="tab-list"] button[data-baseweb="tab"] div,
+[data-baseweb="tab-list"] button[data-baseweb="tab"] span,
+[data-baseweb="tab-list"] button[data-baseweb="tab"] p {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 # ==========================================================
@@ -1789,56 +1799,25 @@ if st.session_state.get("open_main_chat"):
     st.session_state["open_main_chat"] = False
 
 
-
-
-if "main_app_tab" not in st.session_state:
-
-    st.session_state["main_app_tab"] = "📁 Files & Study"
 # ==========================================================
 # BIGGER TAB TEXT
 # ==========================================================
 
 st.markdown("""
 <style>
-
-/* ==========================================================
-   MAIN TABS
-   ========================================================== */
-
-/* Actual tab buttons */
-[data-baseweb="tab-list"] > button[data-baseweb="tab"] {
-    min-height: 58px !important;
-    padding: 10px 24px !important;
-    font-size: 24px !important;
-    font-weight: 800 !important;
+button[data-baseweb="tab"] {
+    font-size: 18px !important;
+    font-weight: 700 !important;
 }
-
-/* All text inside tab buttons */
-[data-baseweb="tab-list"] > button[data-baseweb="tab"] * {
-    font-size: 24px !important;
-    font-weight: 800 !important;
-    line-height: 1.2 !important;
-}
-
-/* Tab list spacing */
-[data-baseweb="tab-list"] {
-    gap: 10px !important;
-}
-
-/* Active tab */
-[data-baseweb="tab-list"] > button[aria-selected="true"] {
-    font-size: 24px !important;
-    font-weight: 800 !important;
-}
-
-/* Active tab text */
-[data-baseweb="tab-list"] > button[aria-selected="true"] * {
-    font-size: 24px !important;
-    font-weight: 800 !important;
-}
-
 </style>
 """, unsafe_allow_html=True)
+
+
+if "main_app_tab" not in st.session_state:
+
+    st.session_state["main_app_tab"] = "📁 Files & Study"
+
+
 files_tab, chat_tab = st.tabs(
     ["📁 Files & Study", "💬 Main Chat"],
     key="main_app_tab",
@@ -4960,142 +4939,124 @@ with chat_tab:
         "💬 Chat with your Study Buddy"
     )
 
-        # ======================================================
-    # SCROLLABLE MAIN CHAT OUTPUT AREA
+    # ======================================================
+    # DISPLAY COMPLETE CHAT HISTORY
     # ======================================================
 
-    chat_output = st.container(
-        height=600,
-        border=False
-    )
+    for message in st.session_state.messages:
 
-    with chat_output:
+        role = message.get(
+            "role",
+            "assistant"
+        )
 
-        # ==================================================
-        # LOADING AREA
-        #
-        # This placeholder is created ABOVE the input bars.
-        # Thinking / image-search loading will appear here.
-        # ==================================================
+        with st.chat_message(role):
 
-        chat_loading_placeholder = st.empty()
-
-        # ==================================================
-        # DISPLAY COMPLETE CHAT HISTORY
-        # ==================================================
-
-        for message in st.session_state.messages:
-
-            role = message.get(
-                "role",
-                "assistant"
-            )
-
-            with st.chat_message(role):
-
-                content = remove_thinking(
-                    str(
-                        message.get(
-                            "content",
-                            ""
-                        )
-                    )
-                )
-
-                if content:
-
-                    st.markdown(
-                        content
-                    )
-
-                # ==========================================
-                # REAL IMAGES
-                # ==========================================
-
-                images = message.get(
-                    "images",
-                    []
-                )
-
-                if images:
-
-                    st.markdown(
-                        "### 🖼️ Related Real Images"
-                    )
-
-                    columns = st.columns(2)
-
-                    for i, image_data in enumerate(
-                        images
-                    ):
-
-                        with columns[i % 2]:
-
-                            try:
-
-                                image_bytes = (
-                                    image_data.get(
-                                        "image"
-                                    )
-                                )
-
-                                if image_bytes:
-
-                                    st.image(
-                                        image_bytes,
-                                        use_container_width=True
-                                    )
-
-                                title = image_data.get(
-                                    "title",
-                                    "Related Image"
-                                )
-
-                                if title:
-
-                                    st.caption(
-                                        title
-                                    )
-
-                                source_url = image_data.get(
-                                    "source",
-                                    ""
-                                )
-
-                                if source_url:
-
-                                    st.markdown(
-                                        f"[🔗 Open original source]({source_url})"
-                                    )
-
-                            except Exception as image_error:
-
-                                print(
-                                    "Image display error:",
-                                    image_error
-                                )
-
-                # ==========================================
-                # INDIVIDUAL AUDIO PLAYER
-                # ==========================================
-
-                if role == "assistant":
-
-                    audio_file = message.get(
-                        "audio_file",
+            content = remove_thinking(
+                str(
+                    message.get(
+                        "content",
                         ""
                     )
+                )
+            )
 
-                    if (
-                        audio_file
-                        and
-                        Path(audio_file).exists()
-                    ):
+            if content:
 
-                        st.audio(
-                            audio_file,
-                            format="audio/mp3"
-                        )
+                st.markdown(
+                    content
+                )
+
+
+            # ==================================================
+            # REAL IMAGES INSIDE THE SAME ASSISTANT MESSAGE
+            # ==================================================
+
+            images = message.get(
+                "images",
+                []
+            )
+
+            if images:
+
+                st.markdown(
+                    "### 🖼️ Related Real Images"
+                )
+
+                columns = st.columns(2)
+
+                for i, image_data in enumerate(
+                    images
+                ):
+
+                    with columns[i % 2]:
+
+                        try:
+
+                            image_bytes = (
+                                image_data.get(
+                                    "image"
+                                )
+                            )
+
+                            if image_bytes:
+
+                                st.image(
+                                    image_bytes,
+                                    use_container_width=True
+                                )
+
+                            title = image_data.get(
+                                "title",
+                                "Related Image"
+                            )
+
+                            if title:
+
+                                st.caption(
+                                    title
+                                )
+
+                            source_url = image_data.get(
+                                "source",
+                                ""
+                            )
+
+                            if source_url:
+
+                                st.markdown(
+                                    f"[🔗 Open original source]({source_url})"
+                                )
+
+                        except Exception as image_error:
+
+                            print(
+                                "Image display error:",
+                                image_error
+                            )
+
+            # ==================================================
+            # INDIVIDUAL AUDIO PLAYER FOR THIS MESSAGE
+            # ==================================================
+
+            if role == "assistant":
+
+                audio_file = message.get(
+                    "audio_file",
+                    ""
+                )
+
+                if (
+                    audio_file
+                    and
+                    Path(audio_file).exists()
+                ):
+
+                    st.audio(
+                        audio_file,
+                        format="audio/mp3"
+                    )
+
 
 # ==========================================================
 # CHAT INPUT
@@ -5288,7 +5249,7 @@ if prompt:
         st.stop()
 
 
-# ======================================================
+    # ======================================================
     # SAVE USER MESSAGE
     # ======================================================
 
@@ -5296,6 +5257,7 @@ if prompt:
         "role": "user",
         "content": prompt
     })
+
 
     # ======================================================
     # AI RESPONSE
@@ -5308,15 +5270,19 @@ if prompt:
         # ==================================================
 
         try:
+
             memory_context = get_memory_context(
                 prompt,
                 max_memories=8
             )
+
         except Exception:
+
             memory_context = (
                 "No long-term memory is available "
                 "for this user."
             )
+
 
         # ==================================================
         # DOCUMENT RETRIEVAL
@@ -5325,7 +5291,9 @@ if prompt:
         document_context = ""
 
         if st.session_state.vector_store is not None:
+
             try:
+
                 docs = (
                     st.session_state.vector_store
                     .similarity_search(
@@ -5335,6 +5303,7 @@ if prompt:
                 )
 
                 if docs:
+
                     document_context = "\n\n".join(
                         str(doc.page_content)
                         for doc in docs
@@ -5344,8 +5313,11 @@ if prompt:
                             None
                         )
                     )
+
             except Exception:
+
                 document_context = ""
+
 
         # ==================================================
         # WEB SEARCH
@@ -5354,20 +5326,35 @@ if prompt:
         web_context = ""
 
         try:
+
             search_results = []
 
             with DDGS() as ddgs:
+
                 results = ddgs.text(
                     prompt,
                     max_results=5
                 )
 
                 for result in results:
-                    title = result.get("title", "")
-                    body = result.get("body", "")
-                    href = result.get("href", "")
+
+                    title = result.get(
+                        "title",
+                        ""
+                    )
+
+                    body = result.get(
+                        "body",
+                        ""
+                    )
+
+                    href = result.get(
+                        "href",
+                        ""
+                    )
 
                     if title or body:
+
                         search_results.append(
                             f"TITLE: {title}\n"
                             f"CONTENT: {body}\n"
@@ -5375,10 +5362,15 @@ if prompt:
                         )
 
             if search_results:
-                web_context = "\n\n".join(search_results)
+
+                web_context = "\n\n".join(
+                    search_results
+                )
 
         except Exception:
+
             web_context = ""
+
 
         # ==================================================
         # SYSTEM PROMPT
@@ -5496,39 +5488,26 @@ Do not explain how you generated the answer.
 The user must see only the final answer.
 """
 
-        with chat_loading_placeholder.container():
-            with st.spinner("🤖 Thinking..."):
-                response = get_llm().invoke([
-                    SystemMessage(content=system_prompt),
-                    HumanMessage(content=prompt)
-                ])
-                answer = response_to_text(response)
-                answer = remove_thinking(answer).strip()
 
-<<<<<<< HEAD
-                if not answer:
-                    raise RuntimeError("AI returned an empty response.")
+        # ==================================================
+        # ONE MODEL CALL ONLY
+        # ==================================================
 
-                # ==================================================
-                # REAL IMAGE SEARCH — ONLY ONCE
-                # ==================================================
-=======
-with chat_loading_placeholder.container():
+        with st.spinner(
+            "🤖 Thinking..."
+        ):
 
-    with st.spinner(
-        "🤖 Thinking..."
-    ):
+            response = get_llm().invoke(
+                [
+                    SystemMessage(
+                        content=system_prompt
+                    ),
+                    HumanMessage(
+                        content=prompt
+                    )
+                ]
+            )
 
-        response = get_llm().invoke(
-            [
-                SystemMessage(
-                    content=system_prompt
-                ),
-                HumanMessage(
-                    content=prompt
-                )
-            ]
-        )
         answer = response_to_text(
             response
         )
@@ -5560,100 +5539,123 @@ with chat_loading_placeholder.container():
 
             try:
 
-                with chat_loading_placeholder.container():
-                
-                    with st.spinner(
-                        "🌐 Finding real images..."
-                    ):
-                
-                        real_image_results = (
-                            search_real_images(
-                                prompt,
-                                max_results=4
-                            )
+                with st.spinner(
+                    "🌐 Finding real images..."
+                ):
+
+                    real_image_results = (
+                        search_real_images(
+                            prompt,
+                            max_results=4
                         )
+                    )
+
             except Exception:
->>>>>>> 6a2ffe52fba1d7b09722c711819e6ac22547c346
 
                 real_image_results = []
 
+
+        # ==================================================
+        # SAVE COMPLETE ASSISTANT MESSAGE
+        # ==================================================
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": answer,
+            "images": real_image_results
+        })
+
+
+        # ==================================================
+        # LONG-TERM MEMORY
+        # ==================================================
+
+        try:
+
+            extract_and_save_memories(
+                prompt,
+                answer
+            )
+
+        except Exception:
+
+            pass
+
+
+        # ==================================================
+        # CREATE UNIQUE CHAT AUDIO
+        # ==================================================
+
+        try:
+
+            clean_answer = (
+                clean_text_for_speech(
+                    answer
+                )
+            )
+
+            if clean_answer:
+
+                unique_filename = (
+                    f"chat_audio_{uuid.uuid4().hex}.mp3"
+                )
+
+                if selected_lang == "hi":
+
+                    voice = "hi-IN-SwaraNeural"
+
+                else:
+
+                    voice = "en-US-AriaNeural"
+
+                async def generate_chat_audio():
+
+                    communicate = edge_tts.Communicate(
+                        clean_answer,
+                        voice
+                    )
+
+                    await communicate.save(
+                        unique_filename
+                    )
+
+                asyncio.run(
+                    generate_chat_audio()
+                )
+
                 if (
-                    st.session_state.get("real_image_search_enabled", True)
-                    and should_search_images(prompt)
+                    st.session_state.messages
+                    and
+                    st.session_state.messages[-1]["role"]
+                    == "assistant"
                 ):
-                    try:
-                        with chat_loading_placeholder.container():
-                            with st.spinner("🌐 Finding real images..."):
-                                real_image_results = search_real_images(
-                                    prompt,
-                                    max_results=4
-                                )
-                    except Exception:
-                        real_image_results = []
 
-                # ==================================================
-                # SAVE COMPLETE ASSISTANT MESSAGE
-                # ==================================================
+                    st.session_state.messages[-1][
+                        "audio_file"
+                    ] = unique_filename
 
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": answer,
-                    "images": real_image_results
-                })
+        except Exception:
 
-                # ==================================================
-                # LONG-TERM MEMORY
-                # ==================================================
+            # TTS failure must never break chat.
+            pass
 
-                try:
-                    extract_and_save_memories(prompt, answer)
-                except Exception:
-                    pass
 
-                # ==================================================
-                # CREATE UNIQUE CHAT AUDIO
-                # ==================================================
+        # ==================================================
+        # AUTO OPEN MAIN CHAT
+        # ==================================================
 
-                try:
-                    clean_answer = clean_text_for_speech(answer)
+        st.session_state.open_main_chat = True
 
-                    if clean_answer:
-                        unique_filename = f"chat_audio_{uuid.uuid4().hex}.mp3"
 
-                        if selected_lang == "hi":
-                            voice = "hi-IN-SwaraNeural"
-                        else:
-                            voice = "en-US-AriaNeural"
+        # ==================================================
+        # RERUN
+        # ==================================================
 
-                        async def generate_chat_audio():
-                            communicate = edge_tts.Communicate(clean_answer, voice)
-                            await communicate.save(unique_filename)
+        st.rerun()
 
-                        asyncio.run(generate_chat_audio())
-
-                        if (
-                            st.session_state.messages
-                            and st.session_state.messages[-1]["role"] == "assistant"
-                        ):
-                            st.session_state.messages[-1]["audio_file"] = unique_filename
-
-                except Exception:
-                    # TTS failure must never break chat.
-                    pass
-
-                # ==================================================
-                # AUTO OPEN MAIN CHAT
-                # ==================================================
-
-                st.session_state.open_main_chat = True
-
-                # ==================================================
-                # RERUN
-                # ==================================================
-
-                st.rerun()
 
     except Exception as e:
+
         error_text = (
             "❌ AI Chat Error\n\n"
             + str(e)
@@ -5665,37 +5667,51 @@ with chat_loading_placeholder.container():
             "images": []
         })
 
+
         # ==================================================
         # AUTO OPEN MAIN CHAT EVEN ON ERROR
         # ==================================================
 
         st.session_state.open_main_chat = True
+
         st.rerun()
 
 
-    # ==========================================================
-    # MEMORY SIDEBAR
-    # ==========================================================
+# ==========================================================
+# MEMORY SIDEBAR
+# ==========================================================
 
-    st.sidebar.markdown("---")
+st.sidebar.markdown("---")
 
-    st.sidebar.subheader("🧠 Long-Term Memory")
+st.sidebar.subheader(
+    "🧠 Long-Term Memory"
+)
 
-    current_memories = load_all_memories()
+current_memories = load_all_memories()
 
-    if current_memories:
-        st.sidebar.success(
-            f"🧠 {len(current_memories)} "
-            f"memory item(s) saved"
-        )
-    else:
-        st.sidebar.info("No long-term memories saved yet.")
+if current_memories:
+
+    st.sidebar.success(
+        f"🧠 {len(current_memories)} "
+        f"memory item(s) saved"
+    )
+
+else:
+
+    st.sidebar.info(
+        "No long-term memories saved yet."
+    )
 
 
-    if st.sidebar.button(
-        "🗑️ Forget My Long-Term Memory",
-        key="forget_long_term_memory"
-    ):
-        delete_all_memories()
-        st.sidebar.success("✅ Long-term memory deleted.")
-        st.rerun()
+if st.sidebar.button(
+    "🗑️ Forget My Long-Term Memory",
+    key="forget_long_term_memory"
+):
+
+    delete_all_memories()
+
+    st.sidebar.success(
+        "✅ Long-term memory deleted."
+    )
+
+    st.rerun()
