@@ -5273,7 +5273,6 @@ if audio is not None:
                         "audio_file"
                     ] = unique_filename
 
-
         except Exception:
 
             # TTS failure must never break chat.
@@ -5315,6 +5314,7 @@ if audio is not None:
         st.session_state.open_main_chat = True
 
         st.rerun()
+
 
 # ==========================================================
 # MEMORY SIDEBAR
