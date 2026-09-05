@@ -48,6 +48,11 @@ if "HF_TOKEN" in st.secrets:
 # PAGE CONFIG
 # ==========================================================
 
+st.set_page_config(
+    page_title="AI Study Buddy",
+    page_icon="📚",
+    layout="wide"
+)
 
 st.set_option(
     "client.toolbarMode",
@@ -55,6 +60,16 @@ st.set_option(
 )
 
 
+st.markdown("""
+<style>
+[data-baseweb="tab-list"] button[data-baseweb="tab"] div,
+[data-baseweb="tab-list"] button[data-baseweb="tab"] span,
+[data-baseweb="tab-list"] button[data-baseweb="tab"] p {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 # ==========================================================
@@ -1784,38 +1799,23 @@ if st.session_state.get("open_main_chat"):
     st.session_state["open_main_chat"] = False
 
 
+# ==========================================================
+# BIGGER TAB TEXT
+# ==========================================================
+
+st.markdown("""
+<style>
+button[data-baseweb="tab"] {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 if "main_app_tab" not in st.session_state:
 
     st.session_state["main_app_tab"] = "📁 Files & Study"
-# ==========================================================
-# BIGGER MAIN TABS
-# ==========================================================
-
-st.markdown("""
-<style>
-
-/* Tab buttons */
-[data-baseweb="tab-list"] > button[data-baseweb="tab"] {
-    min-height: 60px !important;
-    padding: 12px 28px !important;
-}
-
-/* Tab text */
-[data-baseweb="tab-list"] > button[data-baseweb="tab"] * {
-    font-size: 26px !important;
-    font-weight: 800 !important;
-    line-height: 1.2 !important;
-}
-
-/* Space between tabs */
-[data-baseweb="tab-list"] {
-    gap: 12px !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
 
 
 files_tab, chat_tab = st.tabs(
