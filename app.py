@@ -5577,19 +5577,19 @@ briefly introduce the real images that will appear below.
         })
 
         # ==================================================
-        # LONG-TERM MEMORY
-        # ==================================================
+# LONG-TERM MEMORY
+# ==================================================
 
-        try:
+try:
 
-            extract_and_save_memories(
-                prompt,
-                answer
-            )
+    extract_and_save_memories(
+        prompt,
+        answer
+    )
 
-        except Exception:
+except Exception:
 
-            pass
+    pass
 
 
 # ==================================================
@@ -5647,8 +5647,7 @@ try:
 except Exception:
 
     # TTS failure must never break chat.
-    pass
-        # ==================================================
+    pass        # ==================================================
         # AUTO OPEN MAIN CHAT — KEY CHANGE
         # ==========================================================
 
