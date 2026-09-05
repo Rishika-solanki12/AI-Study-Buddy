@@ -2718,15 +2718,12 @@ TEXT:
 
                     st.session_state.analyzed_image_keys = []
 
-                 # ==================================================
+                # ==================================================
                 # SAVE IMAGE ANALYSIS
                 # ==================================================
                 #
-                # Image analysis is intentionally NOT added to
-                # Main Chat messages.
-                #
-                # Files & Study ke existing image explanation
-                # ko koi change nahi kiya ja raha.
+                # Do NOT add image analysis to Main Chat.
+                # Files & Study continues using image_explanation.
                 # ==================================================
 
                 if (
@@ -2737,6 +2734,20 @@ TEXT:
                     st.session_state.analyzed_image_keys.append(
                         current_image_key
                     )
+
+                st.success(
+                    f"✅ Image explanation generated "
+                    f"in {translation_language}!"
+                )
+
+                st.rerun()
+
+            except Exception as e:
+
+                st.sidebar.error(
+                    f"❌ Error analyzing image: {e}"
+                )
+
 
 
 
