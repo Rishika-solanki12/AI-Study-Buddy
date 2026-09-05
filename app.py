@@ -3399,7 +3399,6 @@ Rules:
                     valid_quiz[:num_questions]
                 )
 
-                st.session_state["main_app_tab"] = "📁 Files & Study"
                 
                 st.sidebar.success(
                     "✅ Quiz generated!"
