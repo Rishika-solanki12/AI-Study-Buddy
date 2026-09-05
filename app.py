@@ -2351,7 +2351,7 @@ Use natural Roman Hindi mixed with English.
                 response = vision_llm.invoke(
                     [message]
                 )
-
+                
                 # ==================================================
                 # SAFE IMAGE RESPONSE EXTRACTION
                 # ==================================================
@@ -2718,7 +2718,7 @@ TEXT:
 
                     st.session_state.analyzed_image_keys = []
 
-                # ==================================================
+ # ==================================================
 # SAVE IMAGE ANALYSIS
 # ==================================================
 #
