@@ -1808,14 +1808,14 @@ if "main_app_tab" not in st.session_state:
 # BIGGER TAB TEXT
 # ==========================================================
 
+# ==========================================================
+# BIGGER TAB TEXT
+# ==========================================================
+
 st.markdown("""
 <style>
-div[data-baseweb="tab-list"] button {
-    font-size: 20px !important;
-    font-weight: 800 !important;
-}
-
-div[data-baseweb="tab-list"] button p {
+[data-baseweb="tab-list"] button,
+[data-baseweb="tab-list"] button * {
     font-size: 20px !important;
     font-weight: 800 !important;
 }
