@@ -5288,7 +5288,7 @@ if prompt:
         st.stop()
 
 
-    # ======================================================
+# ======================================================
     # SAVE USER MESSAGE
     # ======================================================
 
@@ -5296,7 +5296,6 @@ if prompt:
         "role": "user",
         "content": prompt
     })
-
 
     # ======================================================
     # AI RESPONSE
@@ -5309,19 +5308,15 @@ if prompt:
         # ==================================================
 
         try:
-
             memory_context = get_memory_context(
                 prompt,
                 max_memories=8
             )
-
         except Exception:
-
             memory_context = (
                 "No long-term memory is available "
                 "for this user."
             )
-
 
         # ==================================================
         # DOCUMENT RETRIEVAL
@@ -5330,9 +5325,7 @@ if prompt:
         document_context = ""
 
         if st.session_state.vector_store is not None:
-
             try:
-
                 docs = (
                     st.session_state.vector_store
                     .similarity_search(
@@ -5342,7 +5335,6 @@ if prompt:
                 )
 
                 if docs:
-
                     document_context = "\n\n".join(
                         str(doc.page_content)
                         for doc in docs
@@ -5352,11 +5344,8 @@ if prompt:
                             None
                         )
                     )
-
             except Exception:
-
                 document_context = ""
-
 
         # ==================================================
         # WEB SEARCH
@@ -5365,35 +5354,20 @@ if prompt:
         web_context = ""
 
         try:
-
             search_results = []
 
             with DDGS() as ddgs:
-
                 results = ddgs.text(
                     prompt,
                     max_results=5
                 )
 
                 for result in results:
-
-                    title = result.get(
-                        "title",
-                        ""
-                    )
-
-                    body = result.get(
-                        "body",
-                        ""
-                    )
-
-                    href = result.get(
-                        "href",
-                        ""
-                    )
+                    title = result.get("title", "")
+                    body = result.get("body", "")
+                    href = result.get("href", "")
 
                     if title or body:
-
                         search_results.append(
                             f"TITLE: {title}\n"
                             f"CONTENT: {body}\n"
@@ -5401,15 +5375,10 @@ if prompt:
                         )
 
             if search_results:
-
-                web_context = "\n\n".join(
-                    search_results
-                )
+                web_context = "\n\n".join(search_results)
 
         except Exception:
-
             web_context = ""
-
 
         # ==================================================
         # SYSTEM PROMPT
@@ -5527,172 +5496,101 @@ Do not explain how you generated the answer.
 The user must see only the final answer.
 """
 
+        with chat_loading_placeholder.container():
+            with st.spinner("🤖 Thinking..."):
+                response = get_llm().invoke([
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=prompt)
+                ])
+                answer = response_to_text(response)
+                answer = remove_thinking(answer).strip()
 
-with chat_loading_placeholder.container():
+                if not answer:
+                    raise RuntimeError("AI returned an empty response.")
 
-    with st.spinner(
-        "🤖 Thinking..."
-    ):
-
-        response = get_llm().invoke(
-            [
-                SystemMessage(
-                    content=system_prompt
-                ),
-                HumanMessage(
-                    content=prompt
-                )
-            ]
-        )
-        answer = response_to_text(
-            response
-        )
-
-        answer = remove_thinking(
-            answer
-        ).strip()
-
-        if not answer:
-
-            raise RuntimeError(
-                "AI returned an empty response."
-            )
-
-
-        # ==================================================
-        # REAL IMAGE SEARCH — ONLY ONCE
-        # ==================================================
-
-        real_image_results = []
-
-        if (
-            st.session_state.get(
-                "real_image_search_enabled",
-                True
-            )
-            and should_search_images(prompt)
-        ):
-
-            try:
-
-                with chat_loading_placeholder.container():
-                
-                    with st.spinner(
-                        "🌐 Finding real images..."
-                    ):
-                
-                        real_image_results = (
-                            search_real_images(
-                                prompt,
-                                max_results=4
-                            )
-                        )
-            except Exception:
+                # ==================================================
+                # REAL IMAGE SEARCH — ONLY ONCE
+                # ==================================================
 
                 real_image_results = []
 
-
-        # ==================================================
-        # SAVE COMPLETE ASSISTANT MESSAGE
-        # ==================================================
-
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": answer,
-            "images": real_image_results
-        })
-
-
-        # ==================================================
-        # LONG-TERM MEMORY
-        # ==================================================
-
-        try:
-
-            extract_and_save_memories(
-                prompt,
-                answer
-            )
-
-        except Exception:
-
-            pass
-
-
-        # ==================================================
-        # CREATE UNIQUE CHAT AUDIO
-        # ==================================================
-
-        try:
-
-            clean_answer = (
-                clean_text_for_speech(
-                    answer
-                )
-            )
-
-            if clean_answer:
-
-                unique_filename = (
-                    f"chat_audio_{uuid.uuid4().hex}.mp3"
-                )
-
-                if selected_lang == "hi":
-
-                    voice = "hi-IN-SwaraNeural"
-
-                else:
-
-                    voice = "en-US-AriaNeural"
-
-                async def generate_chat_audio():
-
-                    communicate = edge_tts.Communicate(
-                        clean_answer,
-                        voice
-                    )
-
-                    await communicate.save(
-                        unique_filename
-                    )
-
-                asyncio.run(
-                    generate_chat_audio()
-                )
-
                 if (
-                    st.session_state.messages
-                    and
-                    st.session_state.messages[-1]["role"]
-                    == "assistant"
+                    st.session_state.get("real_image_search_enabled", True)
+                    and should_search_images(prompt)
                 ):
+                    try:
+                        with chat_loading_placeholder.container():
+                            with st.spinner("🌐 Finding real images..."):
+                                real_image_results = search_real_images(
+                                    prompt,
+                                    max_results=4
+                                )
+                    except Exception:
+                        real_image_results = []
 
-                    st.session_state.messages[-1][
-                        "audio_file"
-                    ] = unique_filename
+                # ==================================================
+                # SAVE COMPLETE ASSISTANT MESSAGE
+                # ==================================================
 
-        except Exception:
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": answer,
+                    "images": real_image_results
+                })
 
-            # TTS failure must never break chat.
-            pass
+                # ==================================================
+                # LONG-TERM MEMORY
+                # ==================================================
 
+                try:
+                    extract_and_save_memories(prompt, answer)
+                except Exception:
+                    pass
 
-        # ==================================================
-        # AUTO OPEN MAIN CHAT
-        # ==================================================
+                # ==================================================
+                # CREATE UNIQUE CHAT AUDIO
+                # ==================================================
 
-        st.session_state.open_main_chat = True
+                try:
+                    clean_answer = clean_text_for_speech(answer)
 
+                    if clean_answer:
+                        unique_filename = f"chat_audio_{uuid.uuid4().hex}.mp3"
 
-        # ==================================================
-        # RERUN
-        # ==================================================
+                        if selected_lang == "hi":
+                            voice = "hi-IN-SwaraNeural"
+                        else:
+                            voice = "en-US-AriaNeural"
 
-        st.rerun()
+                        async def generate_chat_audio():
+                            communicate = edge_tts.Communicate(clean_answer, voice)
+                            await communicate.save(unique_filename)
 
+                        asyncio.run(generate_chat_audio())
+
+                        if (
+                            st.session_state.messages
+                            and st.session_state.messages[-1]["role"] == "assistant"
+                        ):
+                            st.session_state.messages[-1]["audio_file"] = unique_filename
+
+                except Exception:
+                    # TTS failure must never break chat.
+                    pass
+
+                # ==================================================
+                # AUTO OPEN MAIN CHAT
+                # ==================================================
+
+                st.session_state.open_main_chat = True
+
+                # ==================================================
+                # RERUN
+                # ==================================================
+
+                st.rerun()
 
     except Exception as e:
-
         error_text = (
             "❌ AI Chat Error\n\n"
             + str(e)
@@ -5704,51 +5602,37 @@ with chat_loading_placeholder.container():
             "images": []
         })
 
-
         # ==================================================
         # AUTO OPEN MAIN CHAT EVEN ON ERROR
         # ==================================================
 
         st.session_state.open_main_chat = True
-
         st.rerun()
 
 
-# ==========================================================
-# MEMORY SIDEBAR
-# ==========================================================
+    # ==========================================================
+    # MEMORY SIDEBAR
+    # ==========================================================
 
-st.sidebar.markdown("---")
+    st.sidebar.markdown("---")
 
-st.sidebar.subheader(
-    "🧠 Long-Term Memory"
-)
+    st.sidebar.subheader("🧠 Long-Term Memory")
 
-current_memories = load_all_memories()
+    current_memories = load_all_memories()
 
-if current_memories:
-
-    st.sidebar.success(
-        f"🧠 {len(current_memories)} "
-        f"memory item(s) saved"
-    )
-
-else:
-
-    st.sidebar.info(
-        "No long-term memories saved yet."
-    )
+    if current_memories:
+        st.sidebar.success(
+            f"🧠 {len(current_memories)} "
+            f"memory item(s) saved"
+        )
+    else:
+        st.sidebar.info("No long-term memories saved yet.")
 
 
-if st.sidebar.button(
-    "🗑️ Forget My Long-Term Memory",
-    key="forget_long_term_memory"
-):
-
-    delete_all_memories()
-
-    st.sidebar.success(
-        "✅ Long-term memory deleted."
-    )
-
-    st.rerun()
+    if st.sidebar.button(
+        "🗑️ Forget My Long-Term Memory",
+        key="forget_long_term_memory"
+    ):
+        delete_all_memories()
+        st.sidebar.success("✅ Long-term memory deleted.")
+        st.rerun()
