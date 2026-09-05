@@ -60,16 +60,6 @@ st.set_option(
 )
 
 
-st.markdown("""
-<style>
-[data-baseweb="tab-list"] button[data-baseweb="tab"] div,
-[data-baseweb="tab-list"] button[data-baseweb="tab"] span,
-[data-baseweb="tab-list"] button[data-baseweb="tab"] p {
-    font-size: 24px !important;
-    font-weight: 700 !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 
 # ==========================================================
@@ -1811,24 +1801,44 @@ if "main_app_tab" not in st.session_state:
 st.markdown("""
 <style>
 
-/* Main tab buttons */
-.stTabs [data-baseweb="tab"] {
-    font-size: 20px !important;
+/* ==========================================================
+   MAIN TABS
+   ========================================================== */
+
+/* Actual tab buttons */
+[data-baseweb="tab-list"] > button[data-baseweb="tab"] {
+    min-height: 58px !important;
+    padding: 10px 24px !important;
+    font-size: 24px !important;
     font-weight: 800 !important;
-    padding: 12px 18px !important;
 }
 
-/* Tab text */
-.stTabs [data-baseweb="tab"] div,
-.stTabs [data-baseweb="tab"] span,
-.stTabs [data-baseweb="tab"] p {
-    font-size: 20px !important;
+/* All text inside tab buttons */
+[data-baseweb="tab-list"] > button[data-baseweb="tab"] * {
+    font-size: 24px !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+}
+
+/* Tab list spacing */
+[data-baseweb="tab-list"] {
+    gap: 10px !important;
+}
+
+/* Active tab */
+[data-baseweb="tab-list"] > button[aria-selected="true"] {
+    font-size: 24px !important;
+    font-weight: 800 !important;
+}
+
+/* Active tab text */
+[data-baseweb="tab-list"] > button[aria-selected="true"] * {
+    font-size: 24px !important;
     font-weight: 800 !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
-
 files_tab, chat_tab = st.tabs(
     ["📁 Files & Study", "💬 Main Chat"],
     key="main_app_tab",
