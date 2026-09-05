@@ -1808,20 +1808,26 @@ if "main_app_tab" not in st.session_state:
 # BIGGER TAB TEXT
 # ==========================================================
 
-# ==========================================================
-# BIGGER TAB TEXT
-# ==========================================================
-
 st.markdown("""
 <style>
-[data-baseweb="tab-list"] button,
-[data-baseweb="tab-list"] button * {
+
+/* Main tab buttons */
+.stTabs [data-baseweb="tab"] {
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    padding: 12px 18px !important;
+}
+
+/* Tab text */
+.stTabs [data-baseweb="tab"] div,
+.stTabs [data-baseweb="tab"] span,
+.stTabs [data-baseweb="tab"] p {
     font-size: 20px !important;
     font-weight: 800 !important;
 }
+
 </style>
 """, unsafe_allow_html=True)
-
 
 files_tab, chat_tab = st.tabs(
     ["📁 Files & Study", "💬 Main Chat"],
