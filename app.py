@@ -1799,6 +1799,20 @@ if st.session_state.get("open_main_chat"):
     st.session_state["open_main_chat"] = False
 
 
+# ==========================================================
+# BIGGER TAB TEXT
+# ==========================================================
+
+st.markdown("""
+<style>
+button[data-baseweb="tab"] {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 if "main_app_tab" not in st.session_state:
 
     st.session_state["main_app_tab"] = "📁 Files & Study"
