@@ -32,6 +32,8 @@ from pathlib import Path
 import uuid
 from datetime import datetime
 import hashlib
+import asyncio
+import edge_tts
 
 # ==========================================================
 # HUGGING FACE SECRET SETUP
@@ -5589,7 +5591,7 @@ briefly introduce the real images that will appear below.
             pass
 
 
-# ==================================================
+        # ==================================================
         # CREATE UNIQUE CHAT AUDIO
         # ==================================================
 
@@ -5604,26 +5606,62 @@ briefly introduce the real images that will appear below.
             if clean_answer:
 
                 # Generate a unique MP3 filename using UUID
-                unique_filename = f"chat_audio_{uuid.uuid4().hex}.mp3"
-
-                tts = gTTS(
-                    text=clean_answer,
-                    lang=selected_lang
+                unique_filename = (
+                    f"chat_audio_{uuid.uuid4().hex}.mp3"
                 )
 
-                tts.save(
-                    unique_filename
+                # --------------------------------------------------
+                # SELECT NATURAL VOICE
+                # --------------------------------------------------
+
+                if selected_lang == "hi":
+
+                    # Native Indian Hindi female voice
+                    voice = "hi-IN-SwaraNeural"
+
+                else:
+
+                    # Natural English voice
+                    voice = "en-US-AriaNeural"
+
+                # --------------------------------------------------
+                # GENERATE MP3
+                # --------------------------------------------------
+
+                async def generate_chat_audio():
+
+                    communicate = edge_tts.Communicate(
+                        clean_answer,
+                        voice
+                    )
+
+                    await communicate.save(
+                        unique_filename
+                    )
+
+                asyncio.run(
+                    generate_chat_audio()
                 )
 
-                # Save this unique audio filename inside the last assistant message
-                if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
-                    st.session_state.messages[-1]["audio_file"] = unique_filename
+                # --------------------------------------------------
+                # SAVE AUDIO FILE IN MESSAGE
+                # --------------------------------------------------
+
+                if (
+                    st.session_state.messages
+                    and
+                    st.session_state.messages[-1]["role"]
+                    == "assistant"
+                ):
+
+                    st.session_state.messages[-1][
+                        "audio_file"
+                    ] = unique_filename
 
         except Exception:
 
             # TTS failure must never break chat.
             pass
-
         # ==================================================
         # AUTO OPEN MAIN CHAT — KEY CHANGE
         # ==========================================================
