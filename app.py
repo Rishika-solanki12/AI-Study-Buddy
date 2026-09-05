@@ -2265,9 +2265,8 @@ if st.sidebar.button(
         with st.spinner(
             f"AI is analyzing {img_to_process.name}..."
         ):
-
+            
             try:
-
                 image_bytes = (
                     img_to_process.getvalue()
                 )
