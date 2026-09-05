@@ -17,3 +17,4 @@ sentence-transformers
 faiss-cpu
 torch
 torchvision
+edge-tts
