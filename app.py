@@ -198,6 +198,19 @@ DEFAULT_STATE = {
     # ======================================================
 
     "open_main_chat": False,
+
+    # ======================================================
+    # INDEPENDENT GENERATED OUTPUTS
+    # ======================================================
+
+    "generated_outputs": {
+        "files_study": [],
+        "main_chat": [],
+    },
+
+
+
+
 }
 
 for key, value in DEFAULT_STATE.items():
