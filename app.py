@@ -2730,14 +2730,14 @@ TEXT:
 # to show the image analysis normally.
 # ==================================================
 
-if (
-    current_image_key
-    not in st.session_state.analyzed_image_keys
-):
-
-    st.session_state.analyzed_image_keys.append(
+    if (
         current_image_key
-    )
+        not in st.session_state.analyzed_image_keys
+    ):
+
+        st.session_state.analyzed_image_keys.append(
+            current_image_key
+        )
 # ==========================================================
 # DOCUMENT STUDY TOOLS
 # ==========================================================
