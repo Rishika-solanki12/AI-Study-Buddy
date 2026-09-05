@@ -5505,12 +5505,75 @@ The user must see only the final answer.
                 answer = response_to_text(response)
                 answer = remove_thinking(answer).strip()
 
+<<<<<<< HEAD
                 if not answer:
                     raise RuntimeError("AI returned an empty response.")
 
                 # ==================================================
                 # REAL IMAGE SEARCH — ONLY ONCE
                 # ==================================================
+=======
+with chat_loading_placeholder.container():
+
+    with st.spinner(
+        "🤖 Thinking..."
+    ):
+
+        response = get_llm().invoke(
+            [
+                SystemMessage(
+                    content=system_prompt
+                ),
+                HumanMessage(
+                    content=prompt
+                )
+            ]
+        )
+        answer = response_to_text(
+            response
+        )
+
+        answer = remove_thinking(
+            answer
+        ).strip()
+
+        if not answer:
+
+            raise RuntimeError(
+                "AI returned an empty response."
+            )
+
+
+        # ==================================================
+        # REAL IMAGE SEARCH — ONLY ONCE
+        # ==================================================
+
+        real_image_results = []
+
+        if (
+            st.session_state.get(
+                "real_image_search_enabled",
+                True
+            )
+            and should_search_images(prompt)
+        ):
+
+            try:
+
+                with chat_loading_placeholder.container():
+                
+                    with st.spinner(
+                        "🌐 Finding real images..."
+                    ):
+                
+                        real_image_results = (
+                            search_real_images(
+                                prompt,
+                                max_results=4
+                            )
+                        )
+            except Exception:
+>>>>>>> 6a2ffe52fba1d7b09722c711819e6ac22547c346
 
                 real_image_results = []
 
