@@ -1976,7 +1976,7 @@ if all_uploaded_files:
 
         
            
-        with st.spinner(
+          with st.spinner(
                 "⚙️ Auto-processing your study materials..."
             ):
 
