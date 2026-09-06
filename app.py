@@ -5521,7 +5521,7 @@ The user must see only the final answer.
             )
 
 
-        ```python
+        
         # ==================================================
         # REAL IMAGE SEARCH — ONLY ONCE
         # ==================================================
@@ -5577,7 +5577,7 @@ The user must see only the final answer.
             "content": answer,
             "images": real_image_results
         })
-```
+
 
 
         # ==================================================
