@@ -32,6 +32,9 @@ from pathlib import Path
 import uuid
 from datetime import datetime
 import hashlib
+import asyncio
+import edge_tts
+
 
 # ==========================================================
 # HUGGING FACE SECRET SETUP
@@ -3399,6 +3402,7 @@ Rules:
                     valid_quiz[:num_questions]
                 )
 
+                
                 st.sidebar.success(
                     "✅ Quiz generated!"
                 )
@@ -3863,302 +3867,305 @@ with files_tab:
         )
 
 
-# ======================================================
-# DISPLAY MIND MAP
-# ======================================================
+    # ======================================================
+    # DISPLAY MIND MAP
+    # ======================================================
 
-if st.session_state.get("mindmap_dot"):
+    if st.session_state.get("mindmap_dot"):
 
-    st.markdown("---")
+        st.markdown("---")
 
-    st.subheader(
-        "🧠 Mind Map"
-    )
-
-    try:
-
-        st.graphviz_chart(
-            st.session_state.mindmap_dot
+        st.subheader(
+            "🧠 Mind Map"
         )
 
-    except Exception as e:
+        try:
 
-        st.error(
-            f"Mind Map display failed: {e}"
+            st.graphviz_chart(
+                st.session_state.mindmap_dot
+            )
+
+        except Exception as e:
+
+            st.error(
+                f"Mind Map display failed: {e}"
+            )
+
+            st.code(
+                st.session_state.mindmap_dot,
+                language="dot"
+            )
+
+
+    # ======================================================
+    # DISPLAY FLASHCARDS — ISOLATED FLIP HOVER
+    # ======================================================
+
+    if st.session_state.flashcards:
+
+        st.markdown("---")
+
+        st.subheader(
+            "🗂️ Flashcards"
         )
 
-        st.code(
-            st.session_state.mindmap_dot,
-            language="dot"
-        )
+        for i, card in enumerate(
+            st.session_state.flashcards,
+            start=1
+        ):
 
-# ======================================================
-# DISPLAY FLASHCARDS — ISOLATED FLIP HOVER
-# ======================================================
+            term = str(
+                card.get("term", "")
+            )
 
-if st.session_state.flashcards:
+            definition = str(
+                card.get("definition", "")
+            )
 
-    st.markdown("---")
+            # Prevent HTML inside generated text
+            term = (
+                term
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+            )
 
-    st.subheader(
-        "🗂️ Flashcards"
-    )
+            definition = (
+                definition
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+            )
 
-    for i, card in enumerate(
-        st.session_state.flashcards,
-        start=1
-    ):
+            components.html(
+                f"""
+                <!DOCTYPE html>
 
-        term = str(
-            card.get("term", "")
-        )
+                <html>
 
-        definition = str(
-            card.get("definition", "")
-        )
+                <head>
 
-        # Prevent HTML inside generated text
-        term = (
-            term
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;")
-        )
+                    <style>
 
-        definition = (
-            definition
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;")
-        )
+                        * {{
+                            box-sizing: border-box;
+                        }}
 
-        components.html(
-            f"""
-            <!DOCTYPE html>
+                        body {{
+                            margin: 0;
+                            padding: 0;
+                            background: transparent;
+                            font-family: Arial, sans-serif;
+                        }}
 
-            <html>
+                        .flashcard-wrapper {{
+                            width: 100%;
+                            height: 270px;
+                            perspective: 1000px;
+                        }}
 
-            <head>
+                        .flashcard {{
+                            position: relative;
 
-                <style>
+                            width: 100%;
+                            height: 250px;
 
-                    * {{
-                        box-sizing: border-box;
-                    }}
+                            transition:
+                                transform 0.7s ease;
 
-                    body {{
-                        margin: 0;
-                        padding: 0;
-                        background: transparent;
-                        font-family: Arial, sans-serif;
-                    }}
+                            transform-style: preserve-3d;
 
-                    .flashcard-wrapper {{
-                        width: 100%;
-                        height: 270px;
-                        perspective: 1000px;
-                    }}
+                            cursor: pointer;
+                        }}
 
-                    .flashcard {{
-                        position: relative;
+                        .flashcard-wrapper:hover
+                        .flashcard {{
+                            transform: rotateY(180deg);
+                        }}
 
-                        width: 100%;
-                        height: 250px;
+                        .flashcard-front,
+                        .flashcard-back {{
 
-                        transition:
-                            transform 0.7s ease;
+                            position: absolute;
 
-                        transform-style: preserve-3d;
+                            width: 100%;
+                            height: 100%;
 
-                        cursor: pointer;
-                    }}
+                            top: 0;
+                            left: 0;
 
-                    .flashcard-wrapper:hover
-                    .flashcard {{
-                        transform: rotateY(180deg);
-                    }}
+                            border-radius: 20px;
 
-                    .flashcard-front,
-                    .flashcard-back {{
+                            padding: 30px;
 
-                        position: absolute;
+                            display: flex;
 
-                        width: 100%;
-                        height: 100%;
+                            flex-direction: column;
 
-                        top: 0;
-                        left: 0;
+                            justify-content: center;
 
-                        border-radius: 20px;
+                            align-items: center;
 
-                        padding: 30px;
+                            text-align: center;
 
-                        display: flex;
+                            backface-visibility: hidden;
 
-                        flex-direction: column;
+                            -webkit-backface-visibility: hidden;
 
-                        justify-content: center;
+                            box-shadow:
+                                0 10px 30px
+                                rgba(0, 0, 0, 0.20);
 
-                        align-items: center;
+                            overflow: hidden;
+                        }}
 
-                        text-align: center;
+                        /* =========================
+                           FRONT
+                        ========================= */
 
-                        backface-visibility: hidden;
+                        .flashcard-front {{
 
-                        -webkit-backface-visibility: hidden;
+                            background:
+                                linear-gradient(
+                                    135deg,
+                                    #667eea,
+                                    #764ba2
+                                );
 
-                        box-shadow:
-                            0 10px 30px
-                            rgba(0, 0, 0, 0.20);
+                            color: white;
+                        }}
 
-                        overflow: hidden;
-                    }}
+                        /* =========================
+                           BACK
+                        ========================= */
 
-                    /* =========================
-                       FRONT
-                    ========================= */
+                        .flashcard-back {{
 
-                    .flashcard-front {{
+                            background:
+                                linear-gradient(
+                                    135deg,
+                                    #11998e,
+                                    #38ef7d
+                                );
 
-                        background:
-                            linear-gradient(
-                                135deg,
-                                #667eea,
-                                #764ba2
-                            );
+                            color: white;
 
-                        color: white;
-                    }}
+                            transform:
+                                rotateY(180deg);
+                        }}
 
-                    /* =========================
-                       BACK
-                    ========================= */
+                        .flashcard-number {{
 
-                    .flashcard-back {{
+                            font-size: 14px;
 
-                        background:
-                            linear-gradient(
-                                135deg,
-                                #11998e,
-                                #38ef7d
-                            );
+                            font-weight: 600;
 
-                        color: white;
+                            letter-spacing: 1px;
 
-                        transform:
-                            rotateY(180deg);
-                    }}
+                            text-transform: uppercase;
 
-                    .flashcard-number {{
+                            opacity: 0.85;
 
-                        font-size: 14px;
+                            margin-bottom: 15px;
+                        }}
 
-                        font-weight: 600;
+                        .flashcard-term {{
 
-                        letter-spacing: 1px;
+                            font-size: 30px;
 
-                        text-transform: uppercase;
+                            font-weight: 700;
 
-                        opacity: 0.85;
+                            line-height: 1.25;
 
-                        margin-bottom: 15px;
-                    }}
+                            word-break: break-word;
+                        }}
 
-                    .flashcard-term {{
+                        .flashcard-definition {{
 
-                        font-size: 30px;
+                            font-size: 18px;
 
-                        font-weight: 700;
+                            font-weight: 500;
 
-                        line-height: 1.25;
+                            line-height: 1.6;
 
-                        word-break: break-word;
-                    }}
+                            max-width: 90%;
 
-                    .flashcard-definition {{
+                            word-break: break-word;
+                        }}
 
-                        font-size: 18px;
+                        .flashcard-hint {{
 
-                        font-weight: 500;
+                            position: absolute;
 
-                        line-height: 1.6;
+                            bottom: 15px;
 
-                        max-width: 90%;
+                            font-size: 12px;
 
-                        word-break: break-word;
-                    }}
+                            opacity: 0.80;
+                        }}
 
-                    .flashcard-hint {{
+                    </style>
 
-                        position: absolute;
+                </head>
 
-                        bottom: 15px;
+                <body>
 
-                        font-size: 12px;
+                    <div class="flashcard-wrapper">
 
-                        opacity: 0.80;
-                    }}
+                        <div class="flashcard">
 
-                </style>
+                            <!-- FRONT -->
 
-            </head>
+                            <div class="flashcard-front">
 
-            <body>
+                                <div class="flashcard-number">
+                                    Card {i}
+                                </div>
 
-                <div class="flashcard-wrapper">
+                                <div class="flashcard-term">
+                                    {term}
+                                </div>
 
-                    <div class="flashcard">
+                                <div class="flashcard-hint">
+                                    ✨ Hover to flip
+                                </div>
 
-                        <!-- FRONT -->
-
-                        <div class="flashcard-front">
-
-                            <div class="flashcard-number">
-                                Card {i}
                             </div>
 
-                            <div class="flashcard-term">
-                                {term}
-                            </div>
 
-                            <div class="flashcard-hint">
-                                ✨ Hover to flip
-                            </div>
+                            <!-- BACK -->
 
-                        </div>
+                            <div class="flashcard-back">
 
+                                <div class="flashcard-number">
+                                    Card {i} • Definition
+                                </div>
 
-                        <!-- BACK -->
+                                <div class="flashcard-definition">
+                                    {definition}
+                                </div>
 
-                        <div class="flashcard-back">
+                                <div class="flashcard-hint">
+                                    ↩️ Move mouse away to flip back
+                                </div>
 
-                            <div class="flashcard-number">
-                                Card {i} • Definition
-                            </div>
-
-                            <div class="flashcard-definition">
-                                {definition}
-                            </div>
-
-                            <div class="flashcard-hint">
-                                ↩️ Move mouse away to flip back
                             </div>
 
                         </div>
 
                     </div>
 
-                </div>
+                </body>
 
-            </body>
+                </html>
+                """,
+                height=280,
+                scrolling=False
+            )
 
-            </html>
-            """,
-            height=280,
-            scrolling=False
-        )    
+
     # ======================================================
     # DISPLAY QUIZ
     # ======================================================
@@ -4264,7 +4271,6 @@ if st.session_state.flashcards:
                 st.session_state.quiz_data = None
 
                 st.rerun()
-
 # ==========================================================
 # CHAT SETTINGS
 # ==========================================================
@@ -5200,7 +5206,7 @@ prompt = (
 
 
 # ==========================================================
-# PROCESS NEW MESSAGE FIRST
+# MAIN CHAT PROCESSING
 # ==========================================================
 
 if prompt:
@@ -5225,6 +5231,10 @@ if prompt:
         "content": prompt
     })
 
+
+    # ======================================================
+    # AI RESPONSE
+    # ======================================================
 
     try:
 
@@ -5353,10 +5363,8 @@ LANGUAGE
 Reply in exactly the same language used by the user.
 
 If the user writes Hindi, answer in Hindi.
-
 If the user writes Hinglish, answer naturally
 in Hinglish.
-
 If the user writes English, answer in English.
 
 ==================================================
@@ -5388,15 +5396,11 @@ Document rules:
 
 1. Prefer the uploaded document when it actually
    contains the answer.
-
 2. Do NOT force unrelated document content into
    the answer.
-
 3. If the document does not contain enough information,
    use external information or general knowledge.
-
 4. Never pretend unrelated document text is the answer.
-
 5. If the question is unrelated to the uploaded document,
    answer normally.
 
@@ -5412,17 +5416,12 @@ external web sources:
 External-source rules:
 
 1. Use external information when useful.
-
 2. For current/general-world questions, prefer useful
    external information when available.
-
 3. Do not blindly copy search text.
-
 4. Combine sources into a clear answer.
-
 5. If external information is unavailable,
    use general knowledge.
-
 6. Never mention internal retrieval instructions.
 
 ==================================================
@@ -5464,43 +5463,6 @@ The user must see only the final answer.
 
 
         # ==================================================
-        # REAL IMAGE SEARCH INTENT
-        # ==================================================
-
-        image_search_requested = (
-            st.session_state.get(
-                "real_image_search_enabled",
-                True
-            )
-            and should_search_images(prompt)
-        )
-
-        if image_search_requested:
-
-            system_prompt += """
-
-REAL IMAGE SEARCH RULE:
-
-The application will separately search for and display
-real images related to the user's request below your answer.
-
-Do NOT say:
-- "I can't provide an image"
-- "I cannot provide images"
-- "I can't provide a photo"
-- "I don't have access to images"
-- "Here are websites where you can find images"
-- "You can search Shutterstock, Getty Images, etc."
-
-Do NOT provide external image-search websites merely because
-the user asked to see an image.
-
-The application handles the actual image display separately.
-Simply answer the user's request naturally and, if appropriate,
-briefly introduce the real images that will appear below.
-"""
-
-        # ==================================================
         # ONE MODEL CALL ONLY
         # ==================================================
 
@@ -5540,7 +5502,13 @@ briefly introduce the real images that will appear below.
 
         real_image_results = []
 
-        if image_search_requested:
+        if (
+            st.session_state.get(
+                "real_image_search_enabled",
+                True
+            )
+            and should_search_images(prompt)
+        ):
 
             try:
 
@@ -5570,6 +5538,7 @@ briefly introduce the real images that will appear below.
             "images": real_image_results
         })
 
+
         # ==================================================
         # LONG-TERM MEMORY
         # ==================================================
@@ -5586,7 +5555,7 @@ briefly introduce the real images that will appear below.
             pass
 
 
-# ==================================================
+        # ==================================================
         # CREATE UNIQUE CHAT AUDIO
         # ==================================================
 
@@ -5600,37 +5569,60 @@ briefly introduce the real images that will appear below.
 
             if clean_answer:
 
-                # Generate a unique MP3 filename using UUID
-                unique_filename = f"chat_audio_{uuid.uuid4().hex}.mp3"
-
-                tts = gTTS(
-                    text=clean_answer,
-                    lang=selected_lang
+                unique_filename = (
+                    f"chat_audio_{uuid.uuid4().hex}.mp3"
                 )
 
-                tts.save(
-                    unique_filename
+                if selected_lang == "hi":
+
+                    voice = "hi-IN-SwaraNeural"
+
+                else:
+
+                    voice = "en-US-AriaNeural"
+
+                async def generate_chat_audio():
+
+                    communicate = edge_tts.Communicate(
+                        clean_answer,
+                        voice
+                    )
+
+                    await communicate.save(
+                        unique_filename
+                    )
+
+                asyncio.run(
+                    generate_chat_audio()
                 )
 
-                # Save this unique audio filename inside the last assistant message
-                if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
-                    st.session_state.messages[-1]["audio_file"] = unique_filename
+                if (
+                    st.session_state.messages
+                    and
+                    st.session_state.messages[-1]["role"]
+                    == "assistant"
+                ):
+
+                    st.session_state.messages[-1][
+                        "audio_file"
+                    ] = unique_filename
 
         except Exception:
 
             # TTS failure must never break chat.
             pass
 
+
         # ==================================================
-        # AUTO OPEN MAIN CHAT — KEY CHANGE
-        # ==========================================================
+        # AUTO OPEN MAIN CHAT
+        # ==================================================
 
         st.session_state.open_main_chat = True
 
 
         # ==================================================
         # RERUN
-        # ==========================================================
+        # ==================================================
 
         st.rerun()
 
