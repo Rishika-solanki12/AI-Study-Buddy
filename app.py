@@ -65,7 +65,7 @@ st.markdown("""
 [data-baseweb="tab-list"] button[data-baseweb="tab"] div,
 [data-baseweb="tab-list"] button[data-baseweb="tab"] span,
 [data-baseweb="tab-list"] button[data-baseweb="tab"] p {
-    font-size: 24px !important;
+    font-size: 30px !important;
     font-weight: 700 !important;
 }
 </style>
