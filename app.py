@@ -2081,123 +2081,103 @@ if all_uploaded_files:
                                     "LibreOffice is not installed."
                                 )
 
-                            subprocess.run(
-                                [
-                                    libreoffice_path,
-                                    "--headless",
-                                    "--convert-to",
-                                    "docx",
-                                    "--outdir",
-                                    "data/converted_docs",
-                                    file_path
-                                ],
-                                check=True,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE
-                            )
+try:
 
-                            converted_name = (
-                                os.path.splitext(
-                                    original_name
-                                )[0]
-                                + ".docx"
-                            )
+    os.makedirs(
+        "data/converted_docs",
+        exist_ok=True
+    )
 
-                            converted_path = os.path.join(
-                                "data/converted_docs",
-                                converted_name
-                            )
+    # Use the actual LibreOffice executable
+    if os.path.exists(
+        r"C:\Program Files\LibreOffice\program\soffice.exe"
+    ):
+        libreoffice_path = (
+            r"C:\Program Files\LibreOffice\program\soffice.exe"
+        )
 
-                            if not os.path.exists(
-                                converted_path
-                            ):
+    elif os.path.exists(
+        r"C:\Program Files\LibreOffice\program\soffice.com"
+    ):
+        libreoffice_path = (
+            r"C:\Program Files\LibreOffice\program\soffice.com"
+        )
 
-                                raise Exception(
-                                    "DOC to DOCX conversion failed."
-                                )
+    else:
+        raise Exception(
+            "LibreOffice executable was not found."
+        )
 
-                            loader = Docx2txtLoader(
-                                converted_path
-                            )
-
-                            docs = loader.load()
-
-                            all_documents.extend(
-                                docs
-                            )
-
-                        except Exception as e:
-
-                            st.sidebar.error(
-                                f"❌ Could not process "
-                                f"{original_name}: {e}"
-                            )
-
-
-                if all_documents:
-
-                    text_splitter = (
-                        RecursiveCharacterTextSplitter(
-                            chunk_size=1000,
-                            chunk_overlap=200
-                        )
-                    )
-
-                    splits = (
-                        text_splitter.split_documents(
-                            all_documents
-                        )
-                    )
-
-                    embeddings = HuggingFaceEmbeddings(
-                        model_name=(
-                            "sentence-transformers/"
-                            "all-MiniLM-L6-v2"
-                        )
-                    )
-
-                    vector_store = (
-                        FAISS.from_documents(
-                            splits,
-                            embeddings
-                        )
-                    )
-
-                    st.session_state.vector_store = (
-                        vector_store
-                    )
-
-                    os.makedirs(
-                        "faiss_index",
-                        exist_ok=True
-                    )
-
-                    vector_store.save_local(
-                        "faiss_index"
-                    )
-
-                    st.session_state.processed_files = (
-                        current_document_names
-                    )
-
-                    st.sidebar.success(
-                        f"✅ Automatically processed "
-                        f"{len(document_files)} document(s)!"
-                    )
-
-                else:
-
-                    st.sidebar.error(
-                        "❌ No readable text was found."
-                    )
-
-        else:
-
-            st.sidebar.success(
-                f"✅ {len(document_files)} "
-                f"document(s) ready for chat!"
+    # Convert DOC → DOCX
+    result = subprocess.run(
+        [
+            libreoffice_path,
+            "--headless",
+            "--convert-to",
+            "docx",
+            "--outdir",
+            os.path.abspath(
+                "data/converted_docs"
+            ),
+            os.path.abspath(
+                file_path
             )
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
 
+    # Show LibreOffice's actual error
+    if result.returncode != 0:
+
+        error_message = (
+            result.stderr.strip()
+            or result.stdout.strip()
+            or "Unknown LibreOffice conversion error."
+        )
+
+        raise Exception(
+            f"LibreOffice conversion failed: "
+            f"{error_message}"
+        )
+
+    converted_name = (
+        os.path.splitext(
+            original_name
+        )[0]
+        + ".docx"
+    )
+
+    converted_path = os.path.join(
+        "data/converted_docs",
+        converted_name
+    )
+
+    if not os.path.exists(
+        converted_path
+    ):
+        raise Exception(
+            "LibreOffice did not create "
+            "the converted DOCX file."
+        )
+
+    loader = Docx2txtLoader(
+        converted_path
+    )
+
+    docs = loader.load()
+
+    all_documents.extend(
+        docs
+    )
+
+except Exception as e:
+
+    st.sidebar.error(
+        f"❌ Could not process "
+        f"{original_name}: {e}"
+    )
 
 # ======================================================
 # IMAGE PROCESSING
