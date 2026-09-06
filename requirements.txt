@@ -2,6 +2,7 @@ streamlit
 pandas
 pymupdf
 python-docx
+docx2txt
 python-pptx
 scikit-learn
 groq
