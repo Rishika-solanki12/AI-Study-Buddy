@@ -1957,264 +1957,246 @@ if all_uploaded_files:
     )
 
 
+    # ======================================================
+    # DOCUMENT PROCESSING
+    # ======================================================
 
-# ======================================================
-# DOCUMENT PROCESSING
-# ======================================================
+    if document_files:
 
-if document_files:
+        current_document_names = [
+            file.name
+            for file in document_files
+        ]
 
-    current_document_names = [
-        file.name
-        for file in document_files
-    ]
-
-    if (
-        current_document_names
-        != st.session_state.processed_files
-        or st.session_state.get("vector_store") is None
-    ):
-
-        with st.spinner(
-            "⚙️ Auto-processing your study materials..."
+        if (
+            current_document_names
+            != st.session_state.processed_files
+            or st.session_state.get("vector_store") is None
         ):
 
-            all_documents = []
+        
+           
+          with st.spinner(
+                "⚙️ Auto-processing your study materials..."
+            ):
 
-            os.makedirs(
-                "data/uploaded_pdfs",
-                exist_ok=True
-            )
+                all_documents = []
 
-            os.makedirs(
-                "data/converted_docs",
-                exist_ok=True
-            )
-
-            for uploaded_file in document_files:
-
-                original_name = uploaded_file.name
-
-                file_path = os.path.join(
+                os.makedirs(
                     "data/uploaded_pdfs",
-                    original_name
+                    exist_ok=True
                 )
 
-                with open(
-                    file_path,
-                    "wb"
-                ) as f:
+                os.makedirs(
+                    "data/converted_docs",
+                    exist_ok=True
+                )
 
-                    f.write(
-                        uploaded_file.getbuffer()
+                for uploaded_file in document_files:
+
+                    original_name = uploaded_file.name
+
+                    file_path = os.path.join(
+                        "data/uploaded_pdfs",
+                        original_name
                     )
 
-                # ==================================================
-                # PDF
-                # ==================================================
+                    with open(
+                        file_path,
+                        "wb"
+                    ) as f:
 
-                if original_name.lower().endswith(
-                    ".pdf"
-                ):
-
-                    try:
-
-                        loader = PyPDFLoader(
-                            file_path
+                        f.write(
+                            uploaded_file.getbuffer()
                         )
 
-                        docs = loader.load()
 
-                        all_documents.extend(
-                            docs
-                        )
+                    if original_name.lower().endswith(
+                        ".pdf"
+                    ):
 
-                    except Exception as e:
+                        try:
 
-                        st.sidebar.error(
-                            f"❌ PDF error "
-                            f"{original_name}: {e}"
-                        )
+                            loader = PyPDFLoader(
+                                file_path
+                            )
 
-                # ==================================================
-                # DOCX
-                # ==================================================
+                            docs = loader.load()
 
-                elif original_name.lower().endswith(
-                    ".docx"
-                ):
+                            all_documents.extend(
+                                docs
+                            )
 
-                    try:
+                        except Exception as e:
 
-                        loader = Docx2txtLoader(
-                            file_path
-                        )
+                            st.sidebar.error(
+                                f"❌ PDF error "
+                                f"{original_name}: {e}"
+                            )
 
-                        docs = loader.load()
 
-                        all_documents.extend(
-                            docs
-                        )
+                    elif original_name.lower().endswith(
+                        ".docx"
+                    ):
 
-                    except Exception as e:
+                        try:
 
-                        st.sidebar.error(
-                            f"❌ DOCX error "
-                            f"{original_name}: {e}"
-                        )
+                            loader = Docx2txtLoader(
+                                file_path
+                            )
 
-                # ==================================================
-                # DOC
-                # ==================================================
+                            docs = loader.load()
 
-                elif original_name.lower().endswith(
-                    ".doc"
-                ):
+                            all_documents.extend(
+                                docs
+                            )
 
-                    try:
+                        except Exception as e:
 
-                        # --------------------------------------------------
-                        # Find LibreOffice
-                        # --------------------------------------------------
+                            st.sidebar.error(
+                                f"❌ DOCX error "
+                                f"{original_name}: {e}"
+                            )
 
-                        libreoffice_path = shutil.which(
-                            "libreoffice"
-                        )
 
-                        if libreoffice_path is None:
+                    elif original_name.lower().endswith(
+                        ".doc"
+                    ):
+
+                        try:
 
                             libreoffice_path = shutil.which(
-                                "soffice"
+                                "libreoffice"
                             )
 
-                        # --------------------------------------------------
-                        # Check standard Windows LibreOffice paths
-                        # --------------------------------------------------
+                            if libreoffice_path is None:
 
-                        if os.path.exists(
-                            r"C:\Program Files\LibreOffice\program\soffice.exe"
-                        ):
-
-                            libreoffice_path = (
-                                r"C:\Program Files\LibreOffice\program\soffice.exe"
-                            )
-
-                        elif os.path.exists(
-                            r"C:\Program Files\LibreOffice\program\soffice.com"
-                        ):
-
-                            libreoffice_path = (
-                                r"C:\Program Files\LibreOffice\program\soffice.com"
-                            )
-
-                        # --------------------------------------------------
-                        # LibreOffice not found
-                        # --------------------------------------------------
-
-                        if libreoffice_path is None:
-
-                            raise Exception(
-                                "LibreOffice is not installed."
-                            )
-
-                        # --------------------------------------------------
-                        # Create converted documents folder
-                        # --------------------------------------------------
-
-                        os.makedirs(
-                            "data/converted_docs",
-                            exist_ok=True
-                        )
-
-                        # --------------------------------------------------
-                        # Convert DOC → DOCX
-                        # --------------------------------------------------
-
-                        result = subprocess.run(
-                            [
-                                libreoffice_path,
-                                "--headless",
-                                "--convert-to",
-                                "docx",
-                                "--outdir",
-                                os.path.abspath(
-                                    "data/converted_docs"
-                                ),
-                                os.path.abspath(
-                                    file_path
+                                libreoffice_path = shutil.which(
+                                    "soffice"
                                 )
-                            ],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            text=True
-                        )
 
-                        # --------------------------------------------------
-                        # Check LibreOffice conversion result
-                        # --------------------------------------------------
+                            if libreoffice_path is None:
 
-                        if result.returncode != 0:
+                                raise Exception(
+                                    "LibreOffice is not installed."
+                                )
 
-                            error_message = (
-                                result.stderr.strip()
-                                or result.stdout.strip()
-                                or "Unknown LibreOffice conversion error."
+                            subprocess.run(
+                                [
+                                    libreoffice_path,
+                                    "--headless",
+                                    "--convert-to",
+                                    "docx",
+                                    "--outdir",
+                                    "data/converted_docs",
+                                    file_path
+                                ],
+                                check=True,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE
                             )
 
-                            raise Exception(
-                                f"LibreOffice conversion failed: "
-                                f"{error_message}"
+                            converted_name = (
+                                os.path.splitext(
+                                    original_name
+                                )[0]
+                                + ".docx"
                             )
 
-                        # --------------------------------------------------
-                        # Converted DOCX path
-                        # --------------------------------------------------
-
-                        converted_name = (
-                            os.path.splitext(
-                                original_name
-                            )[0]
-                            + ".docx"
-                        )
-
-                        converted_path = os.path.join(
-                            "data/converted_docs",
-                            converted_name
-                        )
-
-                        # --------------------------------------------------
-                        # Verify converted file exists
-                        # --------------------------------------------------
-
-                        if not os.path.exists(
-                            converted_path
-                        ):
-
-                            raise Exception(
-                                "LibreOffice did not create "
-                                "the converted DOCX file."
+                            converted_path = os.path.join(
+                                "data/converted_docs",
+                                converted_name
                             )
 
-                        # --------------------------------------------------
-                        # Read converted DOCX
-                        # --------------------------------------------------
+                            if not os.path.exists(
+                                converted_path
+                            ):
 
-                        loader = Docx2txtLoader(
-                            converted_path
+                                raise Exception(
+                                    "DOC to DOCX conversion failed."
+                                )
+
+                            loader = Docx2txtLoader(
+                                converted_path
+                            )
+
+                            docs = loader.load()
+
+                            all_documents.extend(
+                                docs
+                            )
+
+                        except Exception as e:
+
+                            st.sidebar.error(
+                                f"❌ Could not process "
+                                f"{original_name}: {e}"
+                            )
+
+
+                if all_documents:
+
+                    text_splitter = (
+                        RecursiveCharacterTextSplitter(
+                            chunk_size=1000,
+                            chunk_overlap=200
                         )
+                    )
 
-                        docs = loader.load()
-
-                        all_documents.extend(
-                            docs
+                    splits = (
+                        text_splitter.split_documents(
+                            all_documents
                         )
+                    )
 
-                    except Exception as e:
-
-                        st.sidebar.error(
-                            f"❌ Could not process "
-                            f"{original_name}: {e}"
+                    embeddings = HuggingFaceEmbeddings(
+                        model_name=(
+                            "sentence-transformers/"
+                            "all-MiniLM-L6-v2"
                         )
+                    )
+
+                    vector_store = (
+                        FAISS.from_documents(
+                            splits,
+                            embeddings
+                        )
+                    )
+
+                    st.session_state.vector_store = (
+                        vector_store
+                    )
+
+                    os.makedirs(
+                        "faiss_index",
+                        exist_ok=True
+                    )
+
+                    vector_store.save_local(
+                        "faiss_index"
+                    )
+
+                    st.session_state.processed_files = (
+                        current_document_names
+                    )
+
+                    st.sidebar.success(
+                        f"✅ Automatically processed "
+                        f"{len(document_files)} document(s)!"
+                    )
+
+                else:
+
+                    st.sidebar.error(
+                        "❌ No readable text was found."
+                    )
+
+        else:
+
+            st.sidebar.success(
+                f"✅ {len(document_files)} "
+                f"document(s) ready for chat!"
+            )
 
 
 # ======================================================
