@@ -2758,33 +2758,34 @@ TEXT:
 
 
 
-    # ==========================================================
-    # DOCUMENT STUDY TOOLS
-    # ==========================================================
-    
-    if st.session_state.vector_store is not None:
-    
-        st.sidebar.markdown("---")
-    
-        st.sidebar.subheader(
-            "🎓 Document Study Tools"
-        )
-    
-        explanation_level = st.sidebar.selectbox(
-            "📊 Difficulty Level:",
-            [
-                "Easy",
-                "Medium",
-                "Hard"
-            ],
-            key="document_explanation_level"
-        )
-    
-        exam_points = st.sidebar.checkbox(
-            "🎯 Include Exam Important Points",
-            value=True,
-            key="document_exam_points"
-        )
+# ==========================================================
+# DOCUMENT STUDY TOOLS
+# ==========================================================
+
+if st.session_state.vector_store is not None:
+
+    st.sidebar.markdown("---")
+
+    st.sidebar.subheader(
+        "🎓 Document Study Tools"
+    )
+
+    explanation_level = st.sidebar.selectbox(
+        "📊 Difficulty Level:",
+        [
+            "Easy",
+            "Medium",
+            "Hard"
+        ],
+        key="document_explanation_level"
+    )
+
+    exam_points = st.sidebar.checkbox(
+        "🎯 Include Exam Important Points",
+        value=True,
+        key="document_exam_points"
+    )
+
 
     # ======================================================
     # EXPLANATION LEVEL
@@ -2826,6 +2827,7 @@ Include:
 - important code where present
 """
 
+
     # ======================================================
     # EXAM INSTRUCTION
     # ======================================================
@@ -2853,29 +2855,41 @@ in the uploaded study material.
 
         exam_instruction = ""
 
+
     # ======================================================
     # EXPLAIN DOCUMENT BUTTON
     # ======================================================
-    
-    st.sidebar.write(
-        "DEBUG vector_store:",
-        st.session_state.get("vector_store") is not None
-    )
-    
-    st.sidebar.write(
-        "DEBUG: Explain block reached"
-    )
-    
+
     if st.sidebar.button(
         "✨ Explain Document",
         use_container_width=True,
         key="explain_document_button"
     ):
+
         with st.spinner(
             "🤖 AI is reading and analyzing your study material..."
         ):
 
             try:
+
+                # YAHAN SE TUMHARA EXISTING CODE
+                # BILKUL SAME RAHEGA
+
+                vector_store = (
+                    st.session_state.vector_store
+                )
+
+                docs = vector_store.similarity_search(
+                    "important topics concepts definitions "
+                    "explanations examples formulas code "
+                    "programming concepts questions "
+                    "exam important points",
+                    k=20
+                )
+
+                # ------------------------------------------------
+                # tumhara baaki existing code exactly same
+                # ------------------------------------------------
 
                 # ==================================================
                 # GET RELEVANT DOCUMENT CONTENT
