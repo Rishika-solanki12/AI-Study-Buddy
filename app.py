@@ -5555,63 +5555,39 @@ The user must see only the final answer.
             pass
 
 
-        # ==================================================
+# ==================================================
         # CREATE UNIQUE CHAT AUDIO
         # ==================================================
 
         try:
+            import re
 
-            clean_answer = (
-                clean_text_for_speech(
-                    answer
-                )
-            )
+            clean_answer = clean_text_for_speech(answer)
 
             if clean_answer:
+                unique_filename = f"chat_audio_{uuid.uuid4().hex}.mp3"
 
-                unique_filename = (
-                    f"chat_audio_{uuid.uuid4().hex}.mp3"
-                )
-
-                if selected_lang == "hi":
-
+                # Auto-detect Hindi (Devanagari script check)
+                if re.search(r'[\u0900-\u097F]', clean_answer):
                     voice = "hi-IN-SwaraNeural"
-
                 else:
-
                     voice = "en-US-AriaNeural"
 
                 async def generate_chat_audio():
+                    communicate = edge_tts.Communicate(clean_answer, voice)
+                    await communicate.save(unique_filename)
 
-                    communicate = edge_tts.Communicate(
-                        clean_answer,
-                        voice
-                    )
-
-                    await communicate.save(
-                        unique_filename
-                    )
-
-                asyncio.run(
-                    generate_chat_audio()
-                )
+                asyncio.run(generate_chat_audio())
 
                 if (
                     st.session_state.messages
-                    and
-                    st.session_state.messages[-1]["role"]
-                    == "assistant"
+                    and st.session_state.messages[-1]["role"] == "assistant"
                 ):
-
-                    st.session_state.messages[-1][
-                        "audio_file"
-                    ] = unique_filename
+                    st.session_state.messages[-1]["audio_file"] = unique_filename
 
         except Exception:
-
             # TTS failure must never break chat.
             pass
-
 
         # ==================================================
         # AUTO OPEN MAIN CHAT
