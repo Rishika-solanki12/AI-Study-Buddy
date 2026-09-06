@@ -2180,6 +2180,10 @@ if all_uploaded_files:
                         current_document_names
                     )
 
+
+                    if "document_outputs" not in st.session_state:
+                        st.session_state.document_outputs = []
+                    
                     st.sidebar.success(
                         f"✅ Automatically processed "
                         f"{len(document_files)} document(s)!"
