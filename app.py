@@ -1971,9 +1971,12 @@ if all_uploaded_files:
         if (
             current_document_names
             != st.session_state.processed_files
+            or st.session_state.get("vector_store") is None
         ):
 
-            with st.spinner(
+        
+           
+        with st.spinner(
                 "⚙️ Auto-processing your study materials..."
             ):
 
