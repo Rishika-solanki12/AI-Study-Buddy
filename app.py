@@ -2853,24 +2853,24 @@ in the uploaded study material.
 
         exam_instruction = ""
 
-# ======================================================
-# EXPLAIN DOCUMENT BUTTON
-# ======================================================
-
-st.sidebar.write(
-    "DEBUG vector_store:",
-    st.session_state.get("vector_store") is not None
-)
-
-st.sidebar.write(
-    "DEBUG: Explain block reached"
-)
-
-if st.sidebar.button(
-    "✨ Explain Document",
-    use_container_width=True,
-    key="explain_document_button"
-):
+    # ======================================================
+    # EXPLAIN DOCUMENT BUTTON
+    # ======================================================
+    
+    st.sidebar.write(
+        "DEBUG vector_store:",
+        st.session_state.get("vector_store") is not None
+    )
+    
+    st.sidebar.write(
+        "DEBUG: Explain block reached"
+    )
+    
+    if st.sidebar.button(
+        "✨ Explain Document",
+        use_container_width=True,
+        key="explain_document_button"
+    ):
         with st.spinner(
             "🤖 AI is reading and analyzing your study material..."
         ):
