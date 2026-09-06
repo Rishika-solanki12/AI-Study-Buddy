@@ -5521,6 +5521,7 @@ The user must see only the final answer.
             )
 
 
+        ```python
         # ==================================================
         # REAL IMAGE SEARCH — ONLY ONCE
         # ==================================================
@@ -5554,6 +5555,20 @@ The user must see only the final answer.
 
 
         # ==================================================
+        # CLEAN AI TEXT FOR IMAGE REQUESTS
+        # ==================================================
+
+        if (
+            should_search_images(prompt)
+            and real_image_results
+        ):
+
+            # AI ka unnecessary image-refusal text
+            # chat mein show nahi karenge.
+            answer = ""
+
+
+        # ==================================================
         # SAVE COMPLETE ASSISTANT MESSAGE
         # ==================================================
 
@@ -5562,6 +5577,7 @@ The user must see only the final answer.
             "content": answer,
             "images": real_image_results
         })
+```
 
 
         # ==================================================
