@@ -2856,7 +2856,15 @@ in the uploaded study material.
     # ======================================================
     # EXPLAIN DOCUMENT BUTTON
     # ======================================================
+    st.sidebar.write(
+    "DEBUG vector_store:",
+    st.session_state.get("vector_store")
+    )
 
+
+
+
+    
     if st.sidebar.button(
         "✨ Explain Document",
         use_container_width=True,
