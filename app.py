@@ -342,9 +342,7 @@ iframe {
 """, unsafe_allow_html=True)
 
 
-# ==========================================================
-# SESSION STATE
-# ==========================================================
+
 
 # ==========================================================
 # SESSION STATE
@@ -1961,15 +1959,32 @@ window.addEventListener(
 
 
 # ==========================================================
-# TITLE
+# GYAANAI HEADER
 # ==========================================================
 
-st.title("📚 AI Study Buddy")
+st.markdown("""
+<div class="gyaanai-header">
 
-st.write(
-    "Upload your study material and search concepts instantly!"
-)
+    <div class="gyaanai-brand">
 
+        <div class="gyaanai-robot">
+            🤖
+        </div>
+
+        <div class="gyaanai-brand-text">
+            <div class="gyaanai-title">
+                GyaanAI
+            </div>
+
+            <div class="gyaanai-subtitle">
+                Your AI Study Companion
+            </div>
+        </div>
+
+    </div>
+
+</div>
+""", unsafe_allow_html=True)
 
 
 # ==========================================================
@@ -1988,21 +2003,48 @@ if "main_app_tab" not in st.session_state:
     st.session_state["main_app_tab"] = "📁 Files & Study"
 
 
+# ==========================================================
+# MAIN NAVIGATION
+# ==========================================================
+
 files_tab, chat_tab = st.tabs(
-    ["📁 Files & Study", "💬 Main Chat"],
+    [
+        "📁  Files & Study",
+        "💬  Main Chat"
+    ],
     key="main_app_tab",
     on_change="rerun"
 )
 
 
 # ==========================================================
-# SIDEBAR UPLOAD
+# SIDEBAR — GYAANAI FILES
 # ==========================================================
 
-st.sidebar.markdown("---")
+st.sidebar.markdown("""
+<div class="sidebar-brand">
 
-st.sidebar.header(
-    "📁 Upload Study Material"
+    <div class="sidebar-logo">
+        🤖
+    </div>
+
+    <div>
+        <div class="sidebar-brand-title">
+            GyaanAI
+        </div>
+
+        <div class="sidebar-brand-subtitle">
+            Study Workspace
+        </div>
+    </div>
+
+</div>
+""", unsafe_allow_html=True)
+
+
+st.sidebar.markdown(
+    '<div class="sidebar-section-title">📁 Study Material</div>',
+    unsafe_allow_html=True
 )
 
 
@@ -2031,8 +2073,9 @@ uploaded_files = st.sidebar.file_uploader(
 # CAMERA
 # ==========================================================
 
-st.sidebar.subheader(
-    "📷 Camera"
+st.sidebar.markdown(
+    '<div class="sidebar-section-title">📷 Camera</div>',
+    unsafe_allow_html=True
 )
 
 camera_photo = None
@@ -2040,7 +2083,7 @@ camera_photo = None
 if not st.session_state.camera_enabled:
 
     if st.sidebar.button(
-        "📷 Open Camera",
+        "📷  Open Camera",
         use_container_width=True
     ):
 
@@ -2054,7 +2097,7 @@ else:
     )
 
     if st.sidebar.button(
-        "❌ Close Camera",
+        "❌  Close Camera",
         use_container_width=True
     ):
 
@@ -2077,12 +2120,15 @@ if camera_photo is not None:
     all_uploaded_files.append(
         camera_photo
     )
+
+
 # ==========================================================
 # LANGUAGE
 # ==========================================================
 
-st.sidebar.header(
-    "🌐 Language & Speaker"
+st.sidebar.markdown(
+    '<div class="sidebar-section-title">🌐 Language & Speaker</div>',
+    unsafe_allow_html=True
 )
 
 translation_language = st.sidebar.selectbox(
@@ -2097,6 +2143,10 @@ listen_language = st.sidebar.selectbox(
     key="common_listen_language"
 )
 
+
+# ==========================================================
+# FILE PROCESSING
+# ==========================================================
 
 
 # ==========================================================
