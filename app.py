@@ -49,9 +49,10 @@ if "HF_TOKEN" in st.secrets:
 # ==========================================================
 
 st.set_page_config(
-    page_title="AI Study Buddy",
+    page_title="GyaanAI",
     page_icon="📚",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 st.set_option(
@@ -60,59 +61,26 @@ st.set_option(
 )
 
 
+# ==========================================================
+# GYAANAI — CLEAN LIGHT MINIMAL FRESH UI
+# ==========================================================
+
 st.markdown("""
 <style>
-[data-baseweb="tab-list"] button[data-baseweb="tab"] div,
-[data-baseweb="tab-list"] button[data-baseweb="tab"] span,
-[data-baseweb="tab-list"] button[data-baseweb="tab"] p {
-    font-size: 30px !important;
-    font-weight: 700 !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
-
-# ==========================================================
-# CSS
-# ==========================================================
-
-st.markdown(
-    """
-<style>
-[data-testid="stSidebarCollapseButton"] {
-        display: none !important;
-    }
-[data-testid="collapsedControl"] {
-        display: none !important;
-    }
-
-a[aria-label="App Creator Avatar"] {
-    display: none !important;
-}
-
-.stButton>button {
-    transition: all 0.3s ease;
-    border-radius: 8px;
-}
-
-.stButton>button:hover {
-    transform: scale(1.02);
-    box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
-    border-color: #4CAF50;
-}
-
-.stChatMessage {
-    border-radius: 15px;
-    padding: 10px;
-    margin-bottom: 10px;
-    box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
-}
+/* ==========================================================
+   GLOBAL
+   ========================================================== */
 
 html,
 body {
     overflow-x: hidden !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
+}
+
+.stApp {
+    background: #f8fafc !important;
 }
 
 [data-testid="stAppViewContainer"],
@@ -122,19 +90,32 @@ body {
     overflow-x: hidden !important;
 }
 
+
 /* ==========================================================
-   SIDEBAR WIDTH
+   MAIN CONTAINER
    ========================================================== */
 
-section[data-testid="stSidebar"] {
-    min-width: 420px !important;
-    max-width: 420px !important;
-    width: 420px !important;
+.main .block-container {
+    max-width: 1250px !important;
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
 }
 
-iframe {
-    max-width: 100% !important;
-    border: none !important;
+
+/* ==========================================================
+   HIDE STREAMLIT UI
+   ========================================================== */
+
+[data-testid="stSidebarCollapseButton"] {
+    display: none !important;
+}
+
+[data-testid="collapsedControl"] {
+    display: none !important;
+}
+
+a[aria-label="App Creator Avatar"] {
+    display: none !important;
 }
 
 [class*="viewerBadge"],
@@ -143,11 +124,227 @@ iframe {
     display: none !important;
 }
 
-</style>
-""",
-    unsafe_allow_html=True
-)
 
+/* ==========================================================
+   SIDEBAR
+   ========================================================== */
+
+section[data-testid="stSidebar"] {
+    min-width: 340px !important;
+    max-width: 340px !important;
+    width: 340px !important;
+
+    background: #ffffff !important;
+    border-right: 1px solid #e8edf3 !important;
+}
+
+section[data-testid="stSidebar"] > div {
+    background: #ffffff !important;
+}
+
+[data-testid="stSidebarContent"] {
+    padding: 1.2rem 1rem !important;
+}
+
+
+/* ==========================================================
+   HEADINGS
+   ========================================================== */
+
+h1, h2, h3, h4 {
+    color: #172033 !important;
+    letter-spacing: -0.3px !important;
+}
+
+p {
+    color: #5f6b7a;
+}
+
+
+/* ==========================================================
+   BUTTONS
+   ========================================================== */
+
+.stButton > button {
+    width: 100% !important;
+
+    border-radius: 12px !important;
+    border: 1px solid #e2e8f0 !important;
+
+    background: #ffffff !important;
+    color: #263244 !important;
+
+    min-height: 44px !important;
+
+    font-weight: 600 !important;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        border-color 0.2s ease !important;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px) !important;
+
+    border-color: #cbd5e1 !important;
+
+    box-shadow:
+        0 6px 18px rgba(15, 23, 42, 0.08) !important;
+}
+
+
+/* ==========================================================
+   CHAT MESSAGES
+   ========================================================== */
+
+.stChatMessage {
+    border-radius: 18px !important;
+
+    padding: 12px 16px !important;
+    margin-bottom: 12px !important;
+
+    border: 1px solid #e8edf3 !important;
+
+    box-shadow:
+        0 3px 12px rgba(15, 23, 42, 0.04) !important;
+
+    background: #ffffff !important;
+}
+
+
+/* ==========================================================
+   CHAT INPUT
+   ========================================================== */
+
+[data-testid="stChatInput"] {
+    border-radius: 18px !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    border-radius: 16px !important;
+
+    border: 1px solid #dfe6ee !important;
+
+    background: #ffffff !important;
+
+    padding: 14px 16px !important;
+
+    font-size: 15px !important;
+}
+
+[data-testid="stChatInput"] textarea:focus {
+    border-color: #b8c7dc !important;
+
+    box-shadow:
+        0 0 0 3px rgba(99, 102, 241, 0.08) !important;
+}
+
+
+/* ==========================================================
+   TABS
+   ========================================================== */
+
+[data-baseweb="tab-list"] {
+    gap: 8px !important;
+}
+
+[data-baseweb="tab-list"] button {
+    border-radius: 12px !important;
+}
+
+[data-baseweb="tab-list"] button[data-baseweb="tab"] div,
+[data-baseweb="tab-list"] button[data-baseweb="tab"] span,
+[data-baseweb="tab-list"] button[data-baseweb="tab"] p {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+}
+
+
+/* ==========================================================
+   FILE UPLOADER
+   ========================================================== */
+
+[data-testid="stFileUploader"] {
+    background: #ffffff !important;
+
+    border-radius: 16px !important;
+
+    border: 1px solid #e5eaf0 !important;
+
+    padding: 8px !important;
+}
+
+
+/* ==========================================================
+   INPUTS / SELECTBOX
+   ========================================================== */
+
+[data-baseweb="select"] > div {
+    border-radius: 12px !important;
+    border-color: #e1e7ee !important;
+}
+
+.stTextInput > div > div > input {
+    border-radius: 12px !important;
+    border-color: #e1e7ee !important;
+}
+
+
+/* ==========================================================
+   CHECKBOX
+   ========================================================== */
+
+.stCheckbox {
+    padding: 2px 0 !important;
+}
+
+
+/* ==========================================================
+   IFRAMES
+   ========================================================== */
+
+iframe {
+    max-width: 100% !important;
+    border: none !important;
+}
+
+
+/* ==========================================================
+   MOBILE
+   ========================================================== */
+
+@media (max-width: 768px) {
+
+    .main .block-container {
+        padding-top: 1rem !important;
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
+    }
+
+    section[data-testid="stSidebar"] {
+        min-width: 290px !important;
+        max-width: 290px !important;
+        width: 290px !important;
+    }
+
+    .stChatMessage {
+        border-radius: 15px !important;
+        padding: 10px 12px !important;
+    }
+
+    [data-testid="stChatInput"] textarea {
+        font-size: 14px !important;
+    }
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# ==========================================================
+# SESSION STATE
+# ==========================================================
 
 # ==========================================================
 # SESSION STATE
